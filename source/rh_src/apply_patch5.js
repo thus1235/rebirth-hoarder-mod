@@ -13,13 +13,10 @@ const bridge = 'i.useEffect(()=>{window.__RH_MOD__={jumpToTopFloor:()=>{de(s=>{v
   else { te = te.split(anchor).join(bridge + anchor); console.log('[P1 桥接注入] OK'); }
 }
 
-// ---- P2: 防御性 Ea（对 apply_patches 注入的自动开箱版加 try/catch） ----
-const eaFrom = 'Ea=i.useCallback(()=>{k(n=>{let x={...n,battleReportState:null};if(x.lootBoxState&&!x.lootBoxState.allOpened){const items=(x.lootBoxState.boxes||[]).flatMap(b=>b.items||[]);const crystals=(x.lootBoxState.boxes||[]).reduce((s,b)=>s+(b.crystals||0),0);x={...x,lootStash:Tt(x.lootStash,items),totalCrystals:(x.totalCrystals||0)+crystals,lootBoxState:{...x.lootBoxState,boxes:x.lootBoxState.boxes.map(b=>({...b,opened:true})),allOpened:true}}}if(!x.exitFloorPending)return{...x,phase:"floor_explore"};if(x.pendingCardRewardChoices&&x.pendingCardRewardChoices.length>0){const d=Qe(x.pendingCardRewardChoices);if(d){const cards=(d.choices||[]).slice(0,1);if(cards.length>0){const col=cards.reduce((b,id)=>to(b,id,"white",1),we);v({...r,towerCardCollection:col})}x={...x,cardRewardState:d,pendingCardRewardChoices:null}}return Kt(x)}return Kt(x)}),a.exitFloorPending&&!a.pendingCardRewardChoices?.length&&(z?.(Kt({...a,battleReportState:null})))},[Qe,z,k,Tt,Kt,to,we,v,r,a])';
-const eaTo = 'Ea=i.useCallback(()=>{k(n=>{let x={...n,battleReportState:null};if(x.lootBoxState&&!x.lootBoxState.allOpened){try{const items=(x.lootBoxState.boxes||[]).flatMap(b=>b.items||[]);const crystals=(x.lootBoxState.boxes||[]).reduce((s,b)=>s+(b.crystals||0),0);x={...x,lootStash:Tt(x.lootStash,items),totalCrystals:(x.totalCrystals||0)+crystals,lootBoxState:{...x.lootBoxState,boxes:x.lootBoxState.boxes.map(b=>({...b,opened:true})),allOpened:true}}}catch(e){console.error("[MOD]Ea box",e)}}if(!x.exitFloorPending)return{...x,phase:"floor_explore"};if(x.pendingCardRewardChoices&&x.pendingCardRewardChoices.length>0){try{const d=Qe(x.pendingCardRewardChoices);if(d){const cards=(d.choices||[]).slice(0,1);if(cards.length>0){const col=cards.reduce((b,id)=>to(b,id,"white",1),we);v({...r,towerCardCollection:col})}x={...x,cardRewardState:d,pendingCardRewardChoices:null}}}catch(e){console.error("[MOD]Ea card",e)}}return Kt(x)}),a.exitFloorPending&&!a.pendingCardRewardChoices?.length&&(z?.(Kt({...a,battleReportState:null})))},[Qe,z,k,Tt,Kt,to,we,v,r,a])';
+// ---- P2: 防御性 Ea（【2026-09 回退】Ea 已恢复为原版“战报确认进 loot_box 三选一”，
+//     不再附带自动开箱逻辑，故无需防御性包装；此段 no-op，保留原版 Ea。） ----
 {
-  const cnt = te.split(eaFrom).length - 1;
-  if (cnt !== 1) { console.error('[P2 Ea] 匹配 ' + cnt + ' 处'); ok = false; }
-  else { te = te.split(eaFrom).join(eaTo); console.log('[P2 防御性Ea] OK'); }
+  console.log('[P2 防御性Ea] 已跳过（Ea 为原版三选一）');
 }
 
 // ---- P3: 防御性 Da ----
