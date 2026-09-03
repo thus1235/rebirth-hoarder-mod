@@ -1,4 +1,13 @@
 // apply_patch5.js - 注入完整桥接(F8面板调用) + 防御性Ea/Da（适配新版变量名）
+// 【2026-09 修复】unlockAllFloors / jumpToTopFloor 原实现误用 ao()：
+//   ao 是 AppContent 导出的数组常量 ["inventory","stash","lootStash"]（被复用命名），
+//   并非"节点配置查询"函数 → 调用抛 TypeError / 返回 undefined，功能无效。
+//   区域配置查询应为 ar(nodeId)（index.js az），返回 {startFloor,endFloor,...}；
+//   进入楼层的正规入口是 Ct(floor)（楼层选择 onEnterFloor），它会 clamp 到
+//   已解锁上限并置 phase:"loadout"。据此重写：
+//   · unlockAllFloors = 仅置 rhMod.towerAllFloorsUnlocked 标志（Dt 读取时经
+//     patch4 返回 ar(t).endFloor → 地图界面可选中最高层，无需写假 exploration 字段）
+//   · jumpToTopFloor = 调 Ct(ar(当前区域).endFloor) 走游戏正规进入流程
 const fs = require('fs');
 const teFile = process.argv[2];
 let te = fs.readFileSync(teFile, 'utf8');
@@ -6,7 +15,7 @@ let ok = true;
 
 // ---- P1: 在 return JSX 前注入桥接（此时所有回调已定义，无 TDZ；分号分隔语句） ----
 const anchor = 'return e.jsxs("div",{className:"rh-tower-exploration-root';
-const bridge = 'i.useEffect(()=>{window.__RH_MOD__={jumpToTopFloor:()=>{de(s=>{var c=ao(s.activeNodeId);if(!c||!Number.isFinite(c.endFloor))return s;return{...s,currentFloor:c.endFloor,maxFloorReached:c.endFloor,clearedFloorThisRun:c.endFloor-1,currentBuilding:null,phase:"tower_map"}})},unlockAllFloors:()=>{v({...r,rhMod:{...(r.rhMod||{}),towerAllFloorsUnlocked:!0}}),p(g=>{var ids=["ruin_1","ruin_2","ruin_3","ruin_4","ruin_5"],exp=g.exploration||{},prog={...(exp.towerChapterProgress||{})},cleared=[...(exp.clearedNodes||[])],unlocked=[...(exp.unlockedNodes||[])],any=!1;for(var i=0;i<ids.length;i++){var id=ids[i],c=ao(id);if(!c||!Number.isFinite(c.endFloor))continue;var prev=prog[id];prog[id]={bestLocalFloor:c.endFloor,bestAbsoluteFloor:Math.max(prev&&Number.isFinite(prev.bestAbsoluteFloor)?prev.bestAbsoluteFloor:0,c.worldFloorEnd||0)};cleared.indexOf(id)<0&&cleared.push(id);unlocked.indexOf(id)<0&&unlocked.push(id);any=!0}return any?{...g,exploration:{...exp,clearedNodes:cleared,unlockedNodes:unlocked,towerChapterProgress:prog}}:g})},instantWin:()=>{var c=a.combatState;if(!c||c.encounterType==="boss")return;Ia({...c,victory:!0,playerHp:c.playerMaxHp||c.playerHp,round:1,rounds:1,combatLog:[]})},forceExit:()=>{de({...a,phase:"evacuation"})}};return()=>{window.__RH_MOD__=null}},[de,p,v,r,a,Ia,Et,so]);';
+const bridge = 'i.useEffect(()=>{window.__RH_MOD__={jumpToTopFloor:()=>{try{var node=a.activeNodeId??t,rg=ar(node);if(!rg||!Number.isFinite(rg.endFloor)){console.warn("[MOD]jump:no-region",node);return}Ct(rg.endFloor)}catch(e){console.error("[MOD]jumpTop",e)}},unlockAllFloors:()=>{try{v({...r,rhMod:{...(r.rhMod||{}),towerAllFloorsUnlocked:!0}})}catch(e){console.error("[MOD]unlockAll",e)}},instantWin:()=>{var c=a.combatState;if(!c||c.encounterType==="boss")return;Ia({...c,victory:!0,playerHp:c.playerMaxHp||c.playerHp,round:1,rounds:1,combatLog:[]})},forceExit:()=>{de({...a,phase:"evacuation"})}};return()=>{window.__RH_MOD__=null}},[Ct,de,v,r,a,Ia,ar,t]);';
 {
   const cnt = te.split(anchor).length - 1;
   if (cnt !== 1) { console.error('[P1 桥接] 锚点匹配 ' + cnt + ' 处'); ok = false; }
