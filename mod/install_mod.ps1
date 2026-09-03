@@ -134,6 +134,9 @@ if (Get-Process 'Rebirth Hoarder' -ErrorAction SilentlyContinue) {
 }
 
 # ============ 3. 已安装检测 ============
+# 本安装器设计为：双击「安装MOD.bat」总是把最新版 MOD 装好——
+#  · 首次安装（原版 app.asar 在）：走完整解包流程；
+#  · 已装过（解包目录 app\ 在）：直接覆盖更新补丁到最新版，无需解包、无需输入。
 $appInPlace = Test-Path "$res\app"
 if ($appInPlace) {
     if (Test-Path "$res\app.asar") {
@@ -142,31 +145,10 @@ if ($appInPlace) {
         Read-Host '按回车退出'
         exit 0
     }
-    # 解包目录已存在（MOD 已装）
-    if ($Force) {
-        Write-Host '检测到 MOD 已安装，正在覆盖更新补丁文件（无需重新解包）...' -ForegroundColor Cyan
-        $ok = Update-Patches $res
-        if (-not $ok) { Read-Host '按回车退出' }
-        exit 0
-    }
-    # 双击「安装MOD.bat」但 MOD 已装：询问是否更新
-    Write-Host '检测到本游戏已安装过 MOD。' -ForegroundColor Green
-    Write-Host ''
-    Write-Host '现在要做什么？' -ForegroundColor Yellow
-    Write-Host '  [1] 覆盖更新到最新补丁（推荐，几秒钟）' -ForegroundColor Yellow
-    Write-Host '  [2] 什么都不做，退出' -ForegroundColor Yellow
-    Write-Host ''
-    $choice = Read-Host '请输入 1 或 2'
-    if ($choice -match '^1$') {
-        Write-Host ''
-        Write-Host '正在覆盖更新补丁文件（无需重新解包）...' -ForegroundColor Cyan
-        $ok = Update-Patches $res
-        if (-not $ok) { Read-Host '按回车退出' }
-        exit 0
-    }
-    Write-Host '已退出，未做任何修改。' -ForegroundColor Cyan
-    Write-Host '· 想还原原版游戏：双击「还原MOD.bat」' -ForegroundColor Yellow
-    Read-Host '按回车退出'
+    # 解包目录已存在（MOD 已装）：自动覆盖更新到最新补丁
+    Write-Host '检测到已安装过 MOD，正在覆盖更新到最新补丁（无需重新解包）...' -ForegroundColor Cyan
+    $ok = Update-Patches $res
+    if (-not $ok) { Read-Host '按回车退出' }
     exit 0
 }
 
