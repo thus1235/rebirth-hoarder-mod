@@ -24,6 +24,36 @@ function Restore-Original {
     }
 }
 
+# 覆盖更新补丁（MOD 已装、解包目录在用时，快速替换 3 个 js 到最新版）
+# 返回 $true 表示成功（已提示完成），$false 表示失败（已提示原因）
+function Update-Patches {
+    param($res)
+    $assets = Join-Path $res 'app\dist_steam\assets'
+    $te = Get-ChildItem $assets -Filter 'TowerExploration-*.js' | Select-Object -First 1
+    $idx = Get-ChildItem $assets -Filter 'index-*.js' | Select-Object -First 1
+    $ac = Get-ChildItem $assets -Filter 'AppContent-*.js' | Select-Object -First 1
+    if (-not $te -or -not $idx -or -not $ac) {
+        Write-Err '未找到补丁目标文件，游戏代码结构可能已变化。建议先运行「还原MOD.bat」再重新安装。'
+        return $false
+    }
+    $patchTe = Join-Path $scriptDir 'patched\TowerExploration-b523983e.js'
+    $patchIdx = Join-Path $scriptDir 'patched\index-5398c699.js'
+    $patchAc = Join-Path $scriptDir 'patched\AppContent-478ba388.js'
+    if (-not (Test-Path $patchTe) -or -not (Test-Path $patchIdx) -or -not (Test-Path $patchAc)) {
+        Write-Err '缺少 patched 补丁文件，安装包不完整。'
+        return $false
+    }
+    Copy-Item $patchTe $te.FullName -Force
+    Copy-Item $patchIdx $idx.FullName -Force
+    Copy-Item $patchAc $ac.FullName -Force
+    Write-Host ''
+    Write-Host '============================================================' -ForegroundColor Green
+    Write-Host ' MOD 已更新到最新版！' -ForegroundColor Green
+    Write-Host ' 启动游戏，进入废墟探索后按 F8 打开修改面板。' -ForegroundColor Green
+    Write-Host '============================================================' -ForegroundColor Green
+    return $true
+}
+
 # ============ asar 解析（纯 PowerShell + .NET，无需 node） ============
 function Get-AsarFiles {
     param($node, $prefix)
@@ -114,39 +144,28 @@ if ($appInPlace) {
     }
     # 解包目录已存在（MOD 已装）
     if ($Force) {
-        Write-Host '检测到 MOD 已安装，-force：直接覆盖更新补丁文件（无需重新解包）。' -ForegroundColor Cyan
-        # 走快捷覆盖路径
-        $assets = Join-Path $res 'app\dist_steam\assets'
-        $te = Get-ChildItem $assets -Filter 'TowerExploration-*.js' | Select-Object -First 1
-        $idx = Get-ChildItem $assets -Filter 'index-*.js' | Select-Object -First 1
-        $ac = Get-ChildItem $assets -Filter 'AppContent-*.js' | Select-Object -First 1
-        if (-not $te -or -not $idx -or -not $ac) {
-            Write-Err '未找到补丁目标文件，游戏代码结构可能已变化。建议先运行「还原MOD.bat」再重新安装。'
-            Read-Host '按回车退出'
-            exit 1
-        }
-        $patchTe = Join-Path $scriptDir 'patched\TowerExploration-b523983e.js'
-        $patchIdx = Join-Path $scriptDir 'patched\index-5398c699.js'
-        $patchAc = Join-Path $scriptDir 'patched\AppContent-478ba388.js'
-        if (-not (Test-Path $patchTe) -or -not (Test-Path $patchIdx) -or -not (Test-Path $patchAc)) {
-            Write-Err '缺少 patched 补丁文件，安装包不完整。'
-            Read-Host '按回车退出'
-            exit 1
-        }
-        Copy-Item $patchTe $te.FullName -Force
-        Copy-Item $patchIdx $idx.FullName -Force
-        Copy-Item $patchAc $ac.FullName -Force
-        Write-Host ''
-        Write-Host '============================================================' -ForegroundColor Green
-        Write-Host ' MOD 已更新到最新版！' -ForegroundColor Green
-        Write-Host ' 启动游戏，进入废墟探索后按 F8 打开修改面板。' -ForegroundColor Green
-        Write-Host '============================================================' -ForegroundColor Green
-        Read-Host '按回车退出'
+        Write-Host '检测到 MOD 已安装，正在覆盖更新补丁文件（无需重新解包）...' -ForegroundColor Cyan
+        $ok = Update-Patches $res
+        if (-not $ok) { Read-Host '按回车退出' }
         exit 0
     }
-    Write-Host '检测到 MOD 已安装。' -ForegroundColor Green
-    Write-Host '· 若想【覆盖更新到最新补丁】：请运行「安装MOD.bat -force」' -ForegroundColor Yellow
-    Write-Host '· 若想【还原原版】：请运行「还原MOD.bat」' -ForegroundColor Yellow
+    # 双击「安装MOD.bat」但 MOD 已装：询问是否更新
+    Write-Host '检测到本游戏已安装过 MOD。' -ForegroundColor Green
+    Write-Host ''
+    Write-Host '现在要做什么？' -ForegroundColor Yellow
+    Write-Host '  [1] 覆盖更新到最新补丁（推荐，几秒钟）' -ForegroundColor Yellow
+    Write-Host '  [2] 什么都不做，退出' -ForegroundColor Yellow
+    Write-Host ''
+    $choice = Read-Host '请输入 1 或 2'
+    if ($choice -match '^1$') {
+        Write-Host ''
+        Write-Host '正在覆盖更新补丁文件（无需重新解包）...' -ForegroundColor Cyan
+        $ok = Update-Patches $res
+        if (-not $ok) { Read-Host '按回车退出' }
+        exit 0
+    }
+    Write-Host '已退出，未做任何修改。' -ForegroundColor Cyan
+    Write-Host '· 想还原原版游戏：双击「还原MOD.bat」' -ForegroundColor Yellow
     Read-Host '按回车退出'
     exit 0
 }
