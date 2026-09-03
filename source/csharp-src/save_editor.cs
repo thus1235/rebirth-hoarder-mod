@@ -818,6 +818,9 @@ namespace RhSaveTrainer
             Controls.Add(top);
             Controls.Add(tip);
             ApplyTheme();
+
+            // 关闭窗口时：有异常则写日志，否则删除残留 rh_editor.log，保持目录干净
+            this.FormClosed += delegate(object s, FormClosedEventArgs e) { FlushLog(); };
         }
 
         Button MakeButton(string text, Action onClick)

@@ -24,7 +24,7 @@ if (-not (Test-Path "D:\桌面\末世：我有一辆房车\Rebirth Hoarder.exe")
 Write-Step '组装最新内容到 github_repo/mod ...'
 if (Test-Path "$gh\mod") { Remove-Item "$gh\mod" -Recurse -Force }
 New-Item -ItemType Directory -Force -Path "$gh\mod\patched" | Out-Null
-Get-ChildItem "$root\修改器" -File | ForEach-Object { Copy-Item $_.FullName "$gh\mod" -Force }
+Get-ChildItem "$root\修改器" -File | Where-Object { $_.Extension -notin '.log' } | ForEach-Object { Copy-Item $_.FullName "$gh\mod" -Force }
 Get-ChildItem "$root\修改器\patched" -File | ForEach-Object { Copy-Item $_.FullName "$gh\mod\patched" -Force }
 if (Test-Path "$root\分享包\末世房车MOD-脚本版.zip") {
     Copy-Item "$root\分享包\末世房车MOD-脚本版.zip" "$gh\mod" -Force

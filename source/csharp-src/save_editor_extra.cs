@@ -38,14 +38,53 @@ namespace RhSaveTrainer
         }
 
         // 操作日志（诊断用，位于 exe 同目录 rh_editor.log）
+        // 策略：所有日志先进内存缓冲；只有出现“错误/失败/阻止/异常”级事件时，
+        // 程序退出才把缓冲写入 rh_editor.log；正常操作不写文件，退出时删除残留。
+        static readonly List<string> _logBuf = new List<string>();
+        static bool _logDirty;   // 本次会话是否出现需记录的异常
+
         static void LogWrite(string msg)
         {
             try
             {
+                lock (_logBuf)
+                {
+                    _logBuf.Add(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " | " + msg);
+                    // 含错误/失败/阻止/异常 关键字的记录视为需要落盘
+                    if (msg.IndexOf("失败") >= 0 || msg.IndexOf("错误") >= 0 ||
+                        msg.IndexOf("阻止") >= 0 || msg.IndexOf("异常") >= 0 ||
+                        msg.IndexOf("警告") >= 0)
+                        _logDirty = true;
+                }
+            }
+            catch { }
+        }
+
+        // 强制标记本会话有错误（显式错误级日志；用于 msg 不含关键字但确属异常的场景）
+        static void LogWriteErr(string msg)
+        {
+            try { _logDirty = true; } catch { }
+            LogWrite(msg);
+        }
+
+        // 退出时调用：有异常则写 rh_editor.log，否则删除残留，保持目录干净。
+        static void FlushLog()
+        {
+            try
+            {
                 string dir = Path.GetDirectoryName(Application.ExecutablePath);
-                File.AppendAllText(Path.Combine(dir, "rh_editor.log"),
-                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " | " + msg + "\r\n",
-                    new UTF8Encoding(false));
+                string log = Path.Combine(dir, "rh_editor.log");
+                if (_logDirty)
+                {
+                    lock (_logBuf)
+                    {
+                        File.WriteAllLines(log, _logBuf, new UTF8Encoding(false));
+                    }
+                }
+                else
+                {
+                    if (File.Exists(log)) File.Delete(log);
+                }
             }
             catch { }
         }
