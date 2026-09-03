@@ -1,0 +1,28 @@
+﻿========================
+ 存档修改器 - 源代码包
+========================
+
+【这是什么】
+  《末世：我有一辆房车》存档修改器的完整 C# 源代码，可直接编译。
+  适配游戏版本 3.5。
+
+【文件清单】
+  save_editor.cs        主窗体（标签页、读取/写入存档、校验和重建）
+  save_editor_extra.cs  分页类（角色属性/装备/卡牌/命途/医疗舱、主题配色）
+  game_names.cs         游戏物品/路线/技能 中文名映射表
+  test_main.cs          CLI 自检模式（check/compact/names/probe 等）
+  编译.bat              一键编译脚本
+
+【编译方法】
+  1. Windows 系统自带 .NET Framework 4.x 即可，无需安装 VS。
+  2. 双击「编译.bat」，会在同目录生成「存档修改器.exe」。
+  3. 或手动运行：
+     C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /codepage:65001 /target:winexe /out:存档修改器.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Numerics.dll save_editor.cs save_editor_extra.cs game_names.cs
+
+【重要提醒】
+  - 修改器只改本地存档；Steam 版用户请先关闭 Steam 云同步（见使用说明），
+    否则 Steam 会提示"存档被破坏/冲突"（属 Steam 云同步机制，非存档损坏）。
+  - 属性点上限 = (等级-1)×2，改超上限游戏会按比例重分配，属游戏机制。
+  - 晶核等数据写入 p2（末世阶段字段），需关闭游戏修改后生效。
+
+  仅供个人单机体验 | 作者：thus
