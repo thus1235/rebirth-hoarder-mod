@@ -1,7 +1,7 @@
 ﻿# install_mod.ps1 - 末世：我有一辆房车 MOD 安装器（脚本版·免环境）
 # 仅使用 Windows 10/11 自带的 PowerShell 5.1 + .NET Framework，无需安装任何环境。
 # 流程：备份 app.asar -> 纯 PS 解包 -> 补齐原生模块 -> 替换补丁文件；失败自动还原原版。
-param([string]$GameDir = "")
+param([string]$GameDir = "", [switch]$Force)
 
 $ErrorActionPreference = 'Stop'
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -104,13 +104,49 @@ if (Get-Process 'Rebirth Hoarder' -ErrorAction SilentlyContinue) {
 }
 
 # ============ 3. 已安装检测 ============
-if (Test-Path "$res\app") {
+$appInPlace = Test-Path "$res\app"
+if ($appInPlace) {
     if (Test-Path "$res\app.asar") {
         Write-Host '检测到游戏已更新（app.asar 重新出现），当前 MOD 已失效。' -ForegroundColor Yellow
         Write-Host '请先运行「还原MOD.bat」清理，再重新安装。' -ForegroundColor Yellow
-    } else {
-        Write-Host 'MOD 已安装且游戏未更新，无需重复安装。' -ForegroundColor Green
+        Read-Host '按回车退出'
+        exit 0
     }
+    # 解包目录已存在（MOD 已装）
+    if ($Force) {
+        Write-Host '检测到 MOD 已安装，-force：直接覆盖更新补丁文件（无需重新解包）。' -ForegroundColor Cyan
+        # 走快捷覆盖路径
+        $assets = Join-Path $res 'app\dist_steam\assets'
+        $te = Get-ChildItem $assets -Filter 'TowerExploration-*.js' | Select-Object -First 1
+        $idx = Get-ChildItem $assets -Filter 'index-*.js' | Select-Object -First 1
+        $ac = Get-ChildItem $assets -Filter 'AppContent-*.js' | Select-Object -First 1
+        if (-not $te -or -not $idx -or -not $ac) {
+            Write-Err '未找到补丁目标文件，游戏代码结构可能已变化。建议先运行「还原MOD.bat」再重新安装。'
+            Read-Host '按回车退出'
+            exit 1
+        }
+        $patchTe = Join-Path $scriptDir 'patched\TowerExploration-b523983e.js'
+        $patchIdx = Join-Path $scriptDir 'patched\index-5398c699.js'
+        $patchAc = Join-Path $scriptDir 'patched\AppContent-478ba388.js'
+        if (-not (Test-Path $patchTe) -or -not (Test-Path $patchIdx) -or -not (Test-Path $patchAc)) {
+            Write-Err '缺少 patched 补丁文件，安装包不完整。'
+            Read-Host '按回车退出'
+            exit 1
+        }
+        Copy-Item $patchTe $te.FullName -Force
+        Copy-Item $patchIdx $idx.FullName -Force
+        Copy-Item $patchAc $ac.FullName -Force
+        Write-Host ''
+        Write-Host '============================================================' -ForegroundColor Green
+        Write-Host ' MOD 已更新到最新版！' -ForegroundColor Green
+        Write-Host ' 启动游戏，进入废墟探索后按 F8 打开修改面板。' -ForegroundColor Green
+        Write-Host '============================================================' -ForegroundColor Green
+        Read-Host '按回车退出'
+        exit 0
+    }
+    Write-Host '检测到 MOD 已安装。' -ForegroundColor Green
+    Write-Host '· 若想【覆盖更新到最新补丁】：请运行「安装MOD.bat -force」' -ForegroundColor Yellow
+    Write-Host '· 若想【还原原版】：请运行「还原MOD.bat」' -ForegroundColor Yellow
     Read-Host '按回车退出'
     exit 0
 }

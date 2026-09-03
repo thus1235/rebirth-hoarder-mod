@@ -1,4 +1,5 @@
 @echo off
+chcp 936 >nul
 title 末世：我有一辆房车 - MOD 还原器（脚本版·免环境）
 setlocal EnableExtensions
 
