@@ -1,0 +1,11 @@
+# 规范化行尾：文本文件统一 LF，避免跨平台产生虚假 diff
+* text=auto
+*.js text eol=lf
+*.cs text eol=lf
+*.ps1 text eol=lf
+*.bat text eol=crlf
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.exe binary
+*.zip binary
