@@ -1090,6 +1090,30 @@ namespace RhSaveTrainer
             catch { return false; }
         }
 
+        // 写档成功后清理该槽位的残留临时文件：
+        //   - 本编辑器自己的原子写中间态 "<档案>.tmp"
+        //   - 游戏/编辑器写档时可能遗留的 "<档案>.tmp-<pid>-<uuid>" 中间态
+        // 只删除与当前槽位（path）匹配的临时文件，绝不碰其它槽位或正式档。
+        static void CleanSaveTempFiles(string path)
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(path);
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
+                string baseName = Path.GetFileName(path);          // 例如 progress-current.json
+                // 1) 本编辑器的原子写中间态
+                string ownTmp = path + ".tmp";
+                if (File.Exists(ownTmp)) { try { File.Delete(ownTmp); } catch { } }
+                // 2) "<档案>.tmp-*" 中间态（游戏自动保存 / 编辑器之前遗留）
+                string prefix = baseName + ".tmp-";
+                foreach (string f in Directory.GetFiles(dir, prefix + "*", SearchOption.TopDirectoryOnly))
+                {
+                    try { File.Delete(f); } catch { }
+                }
+            }
+            catch { /* 清理失败不阻断主流程 */ }
+        }
+
         void DoLoad()
         {
             string path = SlotFile;
@@ -1582,6 +1606,7 @@ namespace RhSaveTrainer
                 if (File.Exists(path)) { File.Replace(tmpPath, path, null, true); }
                 else { File.Move(tmpPath, path); }
                 if (gameRunning) WriteApplyMarker();   // 运行中：写自动重载标记，游戏 mod 检测后自动生效
+                CleanSaveTempFiles(path);                // 写档成功后清理该槽位残留的 .tmp 中间态
                 _env = env;
                 object payloadNew;
                 _payload = env.TryGetValue("payload", out payloadNew) ? (Dictionary<string, object>)Json.Clone(payloadNew) : null;
