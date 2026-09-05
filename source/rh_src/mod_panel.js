@@ -16,7 +16,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.8</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.9</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -28,6 +28,7 @@
       '<button data-act="jumpTop">🔼 跳到当前区域最高层</button>' +
       '<button data-act="forceExit">🚪 强制撤离当前区域</button>' +
       '<button data-act="ecoHarvest">🌾 一键收获全部种植</button>' +
+      '<button data-act="ecoRipen">🌱 一键催熟全部作物（立即成熟）</button>' +
       '<button data-act="ecoWater">💧 一键浇水全部</button>' +
       '<button data-act="ecoFert">🧪 一键施肥全部</button>' +
       '<button data-act="ecoSlaughter">🐄 一键宰杀全部养殖</button>' +
@@ -71,7 +72,7 @@
     var titleEl = panel.querySelector('.rhmod-head span');
     function setMini(on) {
       panel.classList.toggle('rhmod-mini', !!on);
-      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.8';
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.9';
       if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
       try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
     }
@@ -201,7 +202,8 @@
     var h = window.__RH_MOD__;
     // 生态打理（收获/宰杀/烹饪/孵化/放养/喂食/浇水/施肥/自动开关）：不依赖废墟战斗，先处理
     if (act === 'ecoHarvest' || act === 'ecoSlaughter' || act === 'ecoCook' || act === 'ecoAll' ||
-        act === 'ecoHatch' || act === 'ecoPlace' || act === 'ecoFeed' || act === 'ecoWater' || act === 'ecoFert') {
+        act === 'ecoHatch' || act === 'ecoPlace' || act === 'ecoFeed' || act === 'ecoWater' || act === 'ecoFert' ||
+        act === 'ecoRipen') {
       var eco = window.__RH_ECO__;
       if (!eco) { toast('未进入游戏界面（生态设备未就绪），请先进游戏', false); return; }
       try {
@@ -213,12 +215,14 @@
         else if (act === 'ecoFeed') eco.feedAll();
         else if (act === 'ecoWater') eco.waterAll();
         else if (act === 'ecoFert') eco.fertilizeAll();
+        else if (act === 'ecoRipen') eco.ripenAll();
         else eco.autoAll();
         setTimeout(function () {
           var st = window.__RH_ECO__ && window.__RH_ECO__.last;
           function n(k) { return st ? (st[k] || 0) : 0; }
-          var h = n('harvest'), s = n('slaughter'), c = n('cook'), ht = n('hatch'), p = n('place'), fd = n('feed'), w = n('water'), f = n('fert');
-          if (act === 'ecoHarvest') toast(h > 0 ? '已收获 ' + h + ' 株成熟作物' : '没有可收获的成熟作物', h > 0);
+          var h = n('harvest'), s = n('slaughter'), c = n('cook'), ht = n('hatch'), p = n('place'), fd = n('feed'), w = n('water'), f = n('fert'), rp = n('ripen');
+          if (act === 'ecoHarvest') toast(h > 0 ? '已收获 ' + h + ' 株成熟作物' : '没有可收获的成熟作物（可先点「一键催熟」）', h > 0);
+          else if (act === 'ecoRipen') toast(rp > 0 ? '已催熟 ' + rp + ' 株作物（立即成熟，点「一键收获」即可收取）' : '没有在生长的作物', rp > 0);
           else if (act === 'ecoSlaughter') toast(s > 0 ? '已宰杀 ' + s + ' 只成熟动物' : '没有可宰杀的成熟动物', s > 0);
           else if (act === 'ecoCook') toast(c > 0 ? '已烹饪 ' + c + ' 道菜' : (st && st.cook === -1 ? '未安装电炉，无法烹饪' : '食材不足或未解锁菜谱'), c > 0);
           else if (act === 'ecoHatch') toast(ht > 0 ? '已放入 ' + ht + ' 枚蛋开始孵化' : '没有可孵化的蛋', ht > 0);

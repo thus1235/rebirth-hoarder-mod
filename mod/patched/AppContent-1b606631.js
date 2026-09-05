@@ -6629,6 +6629,34 @@ __rhEcoModBind9 = (function () {
           });
         });
       },
+      ripenAll: function () {
+        var LAST = window.__RH_ECO_LAST__;
+        var setGS = window.__RH_UE__;
+        if (typeof setGS !== 'function') { LAST.err = 'setter 未就绪'; return; }
+        setGS(function (prev) {
+          window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
+          if (!prev || !prev.p2) { LAST.ripen = 0; return prev; }
+          var n = 0, found = false;
+          var next = (prev.p2.installedDevices || []).map(function (dev) {
+            if (!dev || dev.deviceDefId !== 'hydroponic_box') return dev;
+            var fs = vl(dev);
+            var changed = false;
+            var slots = (fs.slots || []).map(function (s) {
+              if (s && s.seedDefId && s.stage && s.stage !== 'mature') { n++; changed = true; return Object.assign({}, s, { stage: 'mature', growthProgress: 1 }); }
+              return s;
+            });
+            if (!changed) return dev;
+            found = true;
+            return Object.assign({}, dev, {
+              level: Math.max(1, Math.floor(Number(dev.level) || 1), fs.level || 1),
+              farmState: Object.assign({}, fs, { slots: slots })
+            });
+          });
+          if (!found || !n) { LAST.ripen = 0; return prev; }
+          LAST.ripen = n;
+          return Object.assign({}, prev, { p2: Object.assign({}, prev.p2, { installedDevices: next }) });
+        });
+      },
       slaughterAll: function () {
         var LAST = window.__RH_ECO_LAST__;
         var setGS = window.__RH_UE__;
