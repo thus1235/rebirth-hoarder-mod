@@ -112,6 +112,61 @@ __rhEcoModBind9 = (function () {
           return Object.assign({}, prev, { p2: Object.assign({}, prev.p2, { installedDevices: next }) });
         });
       },
+      plantAll: function () {
+        var LAST = window.__RH_ECO_LAST__;
+        var setGS = window.__RH_UE__;
+        if (typeof setGS !== 'function') { LAST.err = 'setter 未就绪'; return; }
+        setGS(function (prev) {
+          window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
+          if (!prev || !prev.p2) { LAST.plant = 0; return prev; }
+          // 统计库存种子（背包+仓库）
+          var seeds = {};
+          function collect(arr) {
+            (arr || []).forEach(function (x) { if (x && typeof x.defId === 'string' && x.defId.indexOf('seed_') === 0) seeds[x.defId] = (seeds[x.defId] || 0) + (x.quantity || 1); });
+          }
+          collect(prev.inventory); collect(prev.stash);
+          var order = Object.keys(seeds).sort(function (a, b) { return (seeds[b] || 0) - (seeds[a] || 0); });
+          if (!order.length) { LAST.plant = 0; return prev; }
+          var need = {}, planted = [], idx = 0;
+          var devs = (prev.p2.installedDevices || []).map(function (d) {
+            if (!d || d.deviceDefId !== 'hydroponic_box') return d;
+            var fs = vl(d);
+            var slots = (fs.slots || []).slice();
+            var occ = {};
+            slots.forEach(function (s) { if (s) occ[s.row + '_' + s.col] = 1; });
+            var GR = fs.gridRows || 4, GC = fs.gridCols || 4, placedHere = 0;
+            for (var R = 0; R < GR && placedHere < GR * GC; R++) for (var C = 0; C < GC && placedHere < GR * GC; C++) {
+              if (occ[R + '_' + C]) continue;
+              var chosen = null;
+              for (var k = 0; k < order.length; k++) { var id = order[k]; if ((seeds[id] - (need[id] || 0)) > 0) { chosen = id; break; } }
+              if (!chosen) break;
+              need[chosen] = (need[chosen] || 0) + 1;
+              slots.push({ id: 'plant_' + Date.now() + '_' + (idx++), seedDefId: chosen, row: R, col: C, plantedAtHour: Math.floor(Number(prev.p2.daysSurvived || 0)) * 24, growthProgress: 0, stage: 'seedling', fertilized: false });
+              planted.push(chosen); placedHere++;
+            }
+            if (!placedHere) return d;
+            return Object.assign({}, d, { level: Math.max(1, Math.floor(Number(d.level) || 1), fs.level || 1), farmState: Object.assign({}, fs, { slots: slots }) });
+          });
+          if (!planted.length) { LAST.plant = 0; return prev; }
+          // 扣除用掉的种子
+          var inv = (prev.inventory || []).map(function (x) { return Object.assign({}, x); });
+          var stash = (prev.stash || []).map(function (x) { return Object.assign({}, x); });
+          Object.keys(need).forEach(function (sid) {
+            var rem = need[sid];
+            function drain(arr, isInv) {
+              for (var i = arr.length - 1; i >= 0 && rem > 0; i--) {
+                if (arr[i].defId !== sid) continue;
+                var q = arr[i].quantity || 1;
+                if (q > rem) { arr[i] = Object.assign({}, arr[i], { quantity: q - rem }); rem = 0; }
+                else { rem -= q; arr.splice(i, 1); }
+              }
+            }
+            drain(stash, false); drain(inv, true);
+          });
+          LAST.plant = planted.length;
+          return Object.assign({}, prev, { inventory: inv, stash: stash, p2: Object.assign({}, prev.p2, { installedDevices: devs }) });
+        });
+      },
       slaughterAll: function () {
         var LAST = window.__RH_ECO_LAST__;
         var setGS = window.__RH_UE__;
