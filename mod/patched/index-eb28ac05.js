@@ -17,7 +17,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.6</span><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.7</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -54,6 +54,9 @@
       '#rhmod-panel .rhmod-row{display:flex;gap:6px;align-items:stretch}' +
       '#rhmod-panel .rhmod-row input{flex:1;min-width:0;background:#0b1220;border:1px solid rgba(120,160,255,.4);border-radius:8px;color:#e2e8f0;padding:8px 10px;font-size:13px;outline:none}' +
       '#rhmod-panel .rhmod-row button{white-space:nowrap;flex:0 0 auto}' +
+      '#rhmod-panel .rhmod-head button{cursor:pointer;background:none;border:none;color:#94a3b8;font-size:14px;line-height:1;padding:0 0 0 8px}' +
+      '#rhmod-panel.rhmod-mini{width:auto!important;min-width:0;padding:7px 12px}' +
+      '#rhmod-panel.rhmod-mini .rhmod-status,#rhmod-panel.rhmod-mini .rhmod-btns,#rhmod-panel.rhmod-mini .rhmod-note{display:none}' +
       '#rhmod-panel .rhmod-btns button:hover{filter:brightness(1.12)}' +
       '#rhmod-panel .rhmod-note{margin-top:10px;font-size:11px;color:#64748b;line-height:1.6}' +
       '#rhmod-panel.rhmod-hidden{display:none}' +
@@ -64,6 +67,17 @@
     document.body.appendChild(panel);
     var x = document.getElementById('rhmod-x');
     if (x) x.onclick = hide;
+    // 小型化：缩成标题条（状态记忆在 localStorage）
+    var miniBtn = document.getElementById('rhmod-mini');
+    var titleEl = panel.querySelector('.rhmod-head span');
+    function setMini(on) {
+      panel.classList.toggle('rhmod-mini', !!on);
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.7';
+      if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
+      try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
+    }
+    if (miniBtn) miniBtn.onclick = function () { setMini(!panel.classList.contains('rhmod-mini')); };
+    try { if (localStorage.getItem('rhmod_mini') === '1') setMini(true); } catch (e) {}
     Array.prototype.forEach.call(panel.querySelectorAll('button[data-act]'), function (b) {
       b.onclick = function () { run(b.getAttribute('data-act'), b); };
     });
