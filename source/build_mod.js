@@ -104,7 +104,8 @@ const checks = [
   ['TowerExploration 桥接 __RH_MOD__', teSrc.includes('window.__RH_MOD__={')],
   ['TowerExploration setAutoWin', teSrc.includes('setAutoWin:(on)')],
   ['TowerExploration autoWin effect', teSrc.includes('[MOD]autoWin')],
-  ['TowerExploration 自动开箱(apply_patches P4)', teSrc.includes('lootBoxState:{...x.lootBoxState,boxes:x.lootBoxState.boxes.map')],
+  ['TowerExploration 战利品分流(apply_patch2)', teSrc.includes('lootBoxState:d?.enemy.encounterType==="boss"?')],
+  ['TowerExploration 普通战斗自动全收', teSrc.includes('phase:re?"boss_first_kill_reward":d?.enemy.encounterType==="boss"?"loot_box":"floor_explore",')],
   ['TowerExploration Dt 标志位', teSrc.includes('towerAllFloorsUnlocked')],
   ['TowerExploration 不注入面板(禁止 RH_MOD_PANEL)', !teSrc.includes('RH_MOD_PANEL')],
   ['index.js 面板注入', idxSrc.includes('/*==RH_MOD_PANEL==*/')],
@@ -112,6 +113,8 @@ const checks = [
   ['index.js 面板 KEY F8', idxSrc.includes("var KEY = 'F8'")],
   ['AppContent 生态注入 __RH_ECO__', acSrc.includes('__RH_ECO__')],
   ['AppContent 生态注入标记 RH_ECO_INJECT', acSrc.includes('RH_ECO_INJECT')],
+  ['AppContent 无残留占位符 __RH_FN_', !acSrc.includes('__RH_FN_')],
+  ['AppContent 宰杀/菜谱函数已按版本解析', /var rr = [A-Za-z0-9_$]+\(cur, doomed\[i\]\.id\)/.test(acSrc) && /var recipes = [A-Za-z0-9_$]+\(\(stove\.level/.test(acSrc)],
 ];
 for (const [name, pass] of checks) {
   console.log(`[VERIFY ${pass ? 'OK' : 'FAIL'}] ${name}`);

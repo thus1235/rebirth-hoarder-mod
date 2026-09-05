@@ -100,7 +100,7 @@ __rhEcoModBind9 = (function () {
             var doomed = cur.filter(function (s) { return s && xr(s).isMature; });
             var got = 0;
             for (var i = 0; i < doomed.length; i++) {
-              var rr = v4(cur, doomed[i].id);
+              var rr = __RH_FN_SLAUGHTER__(cur, doomed[i].id);
               if (rr) { cur = rr.updatedSlots; got++; meat[rr.outputDefId] = (meat[rr.outputDefId] || 0) + rr.outputQuantity; }
             }
             if (!got) return dev;
@@ -139,7 +139,7 @@ __rhEcoModBind9 = (function () {
           if (!stove || typeof R2 !== 'function') { LAST.cook = -1; return prev; }
           var unlocked = prev.p2.chefAdvancedCookingRecipes || [];
           if (!unlocked.length) { LAST.cook = 0; return prev; }
-          var recipes = R2((stove.level || 0) + 1);
+          var recipes = __RH_FN_RECIPES__((stove.level || 0) + 1);
           var cookable = [];
           for (var i = 0; i < recipes.length; i++) {
             if (recipes[i] && recipes[i].id && unlocked.indexOf(recipes[i].id) >= 0) cookable.push(recipes[i]);

@@ -14,7 +14,7 @@ const BAK = path.join(GAME, 'resources', 'app.asar.bak');
 const ASAR = path.join(GAME, 'resources', 'app.asar');
 const APP_DIR = path.join(GAME, 'resources', 'app');
 const REC = path.join(GAME, 'resources', 'rhmod_installed.json');
-const PATCH_VERSION = 'v2-202609'; // 补丁版本（与补丁脚本配套）
+const PATCH_VERSION = 'v2.2-20260905'; // 补丁版本（与补丁脚本配套）
 
 function log(m) { console.log('[MOD] ' + m); }
 function fail(m) { console.error('[错误] ' + m); process.exit(1); }

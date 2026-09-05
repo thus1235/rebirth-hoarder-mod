@@ -16,7 +16,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.2</span><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.3</span><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -296,11 +296,11 @@
   function doReload(attempt) {
     attempt = attempt || 0;
     if (attempt > 10) return;
-    // 1) 若在局内暂停菜单：点"返回主菜单"退到主菜单
-    var b1 = findBtn(/返回主菜单/);
+    // 1) 若在局内暂停菜单：点"返回主菜单"退到主菜单（兼容英文界面）
+    var b1 = findBtn(/返回主菜单|back to main menu|main menu/i);
     if (b1) { b1.click(); setTimeout(function () { doReload(attempt + 1); }, 3500); return; }
-    // 2) 在主菜单：点"继续游戏"重新读档
-    var b2 = findBtn(/继续游戏/);
+    // 2) 在主菜单：点"继续游戏"重新读档（兼容英文界面）
+    var b2 = findBtn(/继续游戏|continue/i);
     if (b2) { b2.click(); return; }
     // 3) 都不在：尝试按 Esc 打开菜单，稍后重试
     //    注意：游戏全局 keydown 处理器会访问 event.target.closest，dispatchEvent 的合成事件

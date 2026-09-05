@@ -6,11 +6,16 @@ param([string]$GameDir = "", [switch]$Force)
 $ErrorActionPreference = 'Stop'
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# 适配版本（2026-09 / 3.5.0）
-$EXPECTED_ASAR = 1461937281   # 原版 app.asar 字节数
+# 适配版本（2026-09-05 / 游戏更新后新版 app.asar = 1461942822）
+$EXPECTED_ASAR = 1461942822   # 原版 app.asar 字节数
 $EXPECTED_TE   = 246347       # TowerExploration-*.js 原版字节数
-$EXPECTED_IDX  = 2053319      # index-*.js 原版字节数
-$EXPECTED_AC   = 3972544      # AppContent-*.js 原版字节数
+$EXPECTED_IDX  = 2054469      # index-*.js 原版字节数
+$EXPECTED_AC   = 3976935      # AppContent-*.js 原版字节数
+
+# 新版补丁文件名（哈希随游戏版本变化）
+$PATCH_TE  = 'TowerExploration-9a03b57e.js'
+$PATCH_IDX = 'index-eb28ac05.js'
+$PATCH_AC  = 'AppContent-1b606631.js'
 
 function Write-Step($m) { Write-Host "[MOD] $m" -ForegroundColor Cyan }
 function Write-Err($m) { Write-Host "[错误] $m" -ForegroundColor Red }
@@ -36,9 +41,9 @@ function Update-Patches {
         Write-Err '未找到补丁目标文件，游戏代码结构可能已变化。建议先运行「还原MOD.bat」再重新安装。'
         return $false
     }
-    $patchTe = Join-Path $scriptDir 'patched\TowerExploration-b523983e.js'
-    $patchIdx = Join-Path $scriptDir 'patched\index-5398c699.js'
-    $patchAc = Join-Path $scriptDir 'patched\AppContent-478ba388.js'
+    $patchTe = Join-Path $scriptDir "patched\$PATCH_TE"
+    $patchIdx = Join-Path $scriptDir "patched\$PATCH_IDX"
+    $patchAc = Join-Path $scriptDir "patched\$PATCH_AC"
     if (-not (Test-Path $patchTe) -or -not (Test-Path $patchIdx) -or -not (Test-Path $patchAc)) {
         Write-Err '缺少 patched 补丁文件，安装包不完整。'
         return $false
@@ -46,6 +51,13 @@ function Update-Patches {
     Copy-Item $patchTe $te.FullName -Force
     Copy-Item $patchIdx $idx.FullName -Force
     Copy-Item $patchAc $ac.FullName -Force
+    # 拷贝后校验：确保 3 个补丁文件完整写入
+    foreach ($pair in @(@($patchTe, $te.FullName), @($patchIdx, $idx.FullName), @($patchAc, $ac.FullName))) {
+        if ((Get-Item $pair[1]).Length -ne (Get-Item $pair[0]).Length) {
+            Write-Err "补丁写入校验失败：$($pair[1])（与 patched 源文件大小不一致）。建议先运行「还原MOD.bat」再重新安装。"
+            return $false
+        }
+    }
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Green
     Write-Host ' MOD 已更新到最新版！' -ForegroundColor Green
@@ -110,9 +122,15 @@ function Extract-Asar {
 
 # ============ 1. 定位游戏目录 ============
 if (-not $GameDir -or -not (Test-Path "$GameDir\Rebirth Hoarder.exe")) {
-    if (Test-Path 'D:\桌面\末世：我有一辆房车\Rebirth Hoarder.exe') {
-        $GameDir = 'D:\桌面\末世：我有一辆房车'
-    } else {
+    # 优先正式版目录，其次副本目录
+    $candidates = @(
+        'D:\桌面\末世：我有一辆房车',
+        'D:\桌面\末世：我有一辆房车 - 副本'
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path "$c\Rebirth Hoarder.exe") { $GameDir = $c; break }
+    }
+    if (-not $GameDir -or -not (Test-Path "$GameDir\Rebirth Hoarder.exe")) {
         Write-Host '未自动找到游戏，请手动输入游戏安装目录：' -ForegroundColor Yellow
         $GameDir = Read-Host '游戏目录'
     }
@@ -215,10 +233,16 @@ if (-not (Test-Path $patchTe) -or -not (Test-Path $patchIdx) -or -not (Test-Path
     Read-Host '按回车退出'
     exit 1
 }
-Copy-Item $patchTe $te.FullName -Force
-Copy-Item $patchIdx $idx.FullName -Force
-Copy-Item $patchAc $ac.FullName -Force
-Write-Step '补丁文件已写入'
+foreach ($pair in @(@($patchTe, $te.FullName), @($patchIdx, $idx.FullName), @($patchAc, $ac.FullName))) {
+    Copy-Item $pair[0] $pair[1] -Force
+    if ((Get-Item $pair[1]).Length -ne (Get-Item $pair[0]).Length) {
+        Write-Err "补丁写入校验失败：$($pair[1])。正在还原原版..."
+        Restore-Original $res
+        Read-Host '按回车退出'
+        exit 1
+    }
+}
+Write-Step '补丁文件已写入并通过校验'
 
 Write-Host ''
 Write-Host '============================================================' -ForegroundColor Green
