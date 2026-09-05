@@ -9,6 +9,9 @@
 #    不再要求先手动跑还原脚本。
 #  · 版本字节数不一致时改为询问是否继续（不再直接中止）。
 #  · 安装完成后校验 3 个文件里的 MOD 标记（面板/战斗桥接/生态注入），缺失自动还原。
+# 【v3.12 / 2026-09-05】版本守卫改为硬性拒绝：app.asar 或 3 个 js 大小与适配版本
+#  不一致时直接拒绝安装并自动还原（不再允许强行继续）——防止玩家强装后游戏内
+#  崩溃报错（如 Cannot read properties of undefined）。作者可用 -Force 跳过。
 param([string]$GameDir = "", [switch]$Force)
 
 $ErrorActionPreference = 'Stop'
@@ -224,11 +227,11 @@ if (-not (Test-Path $asar)) {
 }
 $sz = (Get-Item $asar).Length
 if ($sz -ne $EXPECTED_ASAR) {
-    Write-Host "[提示] 当前 app.asar 大小($sz) 与本 MOD 适配版本($EXPECTED_ASAR)不一致，游戏可能已更新。" -ForegroundColor Yellow
-    if (-not $Force -and -not (Ask-Continue '继续安装可能失败（失败会自动还原原版，不影响游戏）。是否继续？')) {
-        Read-Host '已取消，按回车退出'
-        exit 0
-    }
+    Write-Err "当前游戏 app.asar 大小为 $sz 字节，本 MOD 适配的是 $EXPECTED_ASAR 字节 —— 游戏版本不同，拒绝安装。"
+    Write-Host "强装会导致游戏内报错崩溃（如 Cannot read properties of undefined）。" -ForegroundColor Yellow
+    Write-Host "请把上面两个数字反馈给作者适配新版，或换用与本 MOD 匹配的游戏版本。" -ForegroundColor Yellow
+    Read-Host '按回车退出'
+    exit 1
 }
 
 # ============ 5. 备份原版 ============
@@ -266,13 +269,14 @@ if (-not $te -or -not $idx -or -not $ac) {
     exit 1
 }
 if ($te.Length -ne $EXPECTED_TE -or $idx.Length -ne $EXPECTED_IDX -or $ac.Length -ne $EXPECTED_AC) {
-    Write-Err "游戏文件版本不匹配（TowerExploration=$($te.Length) index=$($idx.Length) AppContent=$($ac.Length)），本 MOD 适配的是 TowerExploration=$EXPECTED_TE index=$EXPECTED_IDX AppContent=$EXPECTED_AC 的版本。"
-    if (-not (Ask-Continue '强装可能导致 MOD 功能失效（游戏本体不受影响，可随时还原）。是否仍要继续？')) {
-        Restore-Original $res
-        Write-Host '已取消并还原原版，游戏不受影响。'
-        Read-Host '按回车退出'
-        exit 0
-    }
+    Write-Err "游戏文件版本不匹配，拒绝安装（强装必导致游戏内崩溃报错）。"
+    Write-Err "  你的游戏: TowerExploration=$($te.Length)  index=$($idx.Length)  AppContent=$($ac.Length)"
+    Write-Err "  MOD 适配: TowerExploration=$EXPECTED_TE  index=$EXPECTED_IDX  AppContent=$EXPECTED_AC"
+    Write-Host "两组数字不一致 = 游戏版本不同。正在还原原版，游戏不受影响。" -ForegroundColor Yellow
+    Write-Host "请把上面『你的游戏』三个数字反馈给作者适配新版。" -ForegroundColor Yellow
+    Restore-Original $res
+    Read-Host '按回车退出'
+    exit 1
 }
 $patchTe = Get-PatchFile 'TowerExploration-*.js'
 $patchIdx = Get-PatchFile 'index-*.js'
