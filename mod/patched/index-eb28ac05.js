@@ -17,7 +17,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.7</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.8</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -72,7 +72,7 @@
     var titleEl = panel.querySelector('.rhmod-head span');
     function setMini(on) {
       panel.classList.toggle('rhmod-mini', !!on);
-      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.7';
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.8';
       if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
       try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
     }
@@ -279,8 +279,8 @@
           var rr = window.__RH_RESTORE_RESULT__;
           if (!rr) { toast('已提交还原请求，请稍候或重进地图查看', true); return; }
           if (rr.err) { toast('还原失败：' + rr.err, false); return; }
-          if (!rr.changed) { toast('该区域（' + rr.node + '）当前进度 ' + rr.old + ' 层，无需还原（只能往低还原）', false); return; }
-          toast('已把楼层进度从 ' + rr.old + ' 层还原到 ' + rr.set + ' 层（区域 ' + rr.node + '），游戏自动存档后写入存档', true);
+          if (!rr.changed) { toast('区域 ' + rr.node + ' 当前进度 ' + rr.old + ' 层，无需还原（只能往低还原）', false); return; }
+          toast('已把区域 ' + rr.node + ' 从 ' + rr.old + ' 层还原到 ' + rr.set + ' 层，并撤除了本局MOD解锁；游戏自动存档后生效', true);
         }, 900);
       } catch (e) { toast('执行失败：' + e.message, false); }
     } else if (act === 'jumpTop') {
