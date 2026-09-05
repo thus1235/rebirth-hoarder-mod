@@ -26,7 +26,13 @@ if (Test-Path "$gh\mod") { Remove-Item "$gh\mod" -Recurse -Force }
 New-Item -ItemType Directory -Force -Path "$gh\mod\patched" | Out-Null
 Get-ChildItem "$root\修改器" -File | Where-Object { $_.Extension -notin '.log' } | ForEach-Object { Copy-Item $_.FullName "$gh\mod" -Force }
 Get-ChildItem "$root\修改器\patched" -File | ForEach-Object { Copy-Item $_.FullName "$gh\mod\patched" -Force }
-if (Test-Path "$root\分享包\末世房车MOD-脚本版.zip") {
+# 分享包 zip：优先取 分享包\ 下最新的 末世房车MOD-v*.zip（2026-09-05 起改为版本号命名）
+$latestZip = Get-ChildItem "$root\分享包" -Filter '末世房车MOD-v*.zip' -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($latestZip) {
+    Copy-Item $latestZip.FullName "$gh\mod" -Force
+    Write-Step ("已纳入分享包: " + $latestZip.Name)
+} elseif (Test-Path "$root\分享包\末世房车MOD-脚本版.zip") {
     Copy-Item "$root\分享包\末世房车MOD-脚本版.zip" "$gh\mod" -Force
 } else {
     Write-Host '  (提示) 未找到分享包 zip，跳过' -ForegroundColor DarkGray
@@ -54,8 +60,14 @@ try {
     }
     git add --renormalize . 2>$null   # 规范化换行，避免虚假 diff
     git add -A
+    # 提交信息带上 MOD 版本号（从 使用说明.txt 首部提取）
+    $ver = 'unknown'
+    try {
+        $firstLine = (Get-Content "$gh\mod\使用说明.txt" -TotalCount 4 -Encoding UTF8 | Where-Object { $_ -match 'MOD v' } | Select-Object -First 1)
+        if ($firstLine -match 'MOD\s+(v[0-9.]+)') { $ver = $Matches[1] }
+    } catch {}
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm'
-    $msg = "更新 $date：自动同步工具库内容"
+    $msg = "$ver 更新 $date：自动同步工具库内容"
     git commit -m $msg
     Write-Step "已提交：$msg"
     git push origin main

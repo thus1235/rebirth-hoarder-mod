@@ -16,12 +16,15 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.3</span><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.7</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
       '<button data-act="autoWin" id="rhmod-autowin">🎯 自动秒杀模式：关</button>' +
       '<button data-act="unlockAll">🔓 一键解锁全部楼层</button>' +
+      '<div class="rhmod-row"><input id="rhmod-unlock-floor" type="number" min="0" max="999" placeholder="楼层号，如 30"><button data-act="unlockTo">🔓 解锁到指定楼层</button></div>' +
+      '<button data-act="restoreProgress">📉 还原已解锁楼层到输入的层数</button>' +
+      '<button data-act="restoreFloors">↩️ 仅还原MOD解锁（不改动真实进度）</button>' +
       '<button data-act="jumpTop">🔼 跳到当前区域最高层</button>' +
       '<button data-act="forceExit">🚪 强制撤离当前区域</button>' +
       '<button data-act="ecoHarvest">🌾 一键收获全部种植</button>' +
@@ -35,7 +38,7 @@
       '<button data-act="ecoAll">✨ 一键全部完成（种植+养殖+孵化+烹饪）</button>' +
       '<button data-act="ecoAuto" id="rhmod-ecoauto">🤖 自动打理：关</button>' +
       '</div>' +
-      '<div class="rhmod-note">已内置：战斗后自动领奖 / 楼层自由选择(无需定位器) / 默认最高层<br>生态打理：收获/浇水/施肥/宰杀/孵化/放养/喂食/烹饪（自动模式每 15 秒执行一次）<br>按 ' + KEY + ' 打开或关闭面板</div>';
+      '<div class="rhmod-note">已内置：战斗后自动领奖 / 楼层自由选择(无需定位器) / 默认最高层<br>解锁楼层：全部解锁 或 解锁到指定楼层（本次启动内有效）<br>📉 还原已解锁楼层：改写真实楼层进度（含自己打上去的），填 0 = 清空该区域进度；游戏自动存档后生效，建议先用存档修改器备份<br>「仅还原MOD解锁」只撤销 MOD 的解锁标志，不动真实进度<br>生态打理：收获/浇水/施肥/宰杀/孵化/放养/喂食/烹饪（自动模式每 15 秒执行一次）<br>按 ' + KEY + ' 打开或关闭面板</div>';
     var css = document.createElement('style');
     css.textContent =
       '#rhmod-panel{position:fixed;top:80px;right:16px;width:300px;z-index:2147483000;background:rgba(10,14,22,.96);' +
@@ -47,6 +50,12 @@
       '#rhmod-panel .rhmod-btns{display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow-y:auto;padding-right:4px}' +
       '#rhmod-panel .rhmod-btns button{cursor:pointer;border:none;border-radius:8px;padding:9px 10px;font-size:13px;font-weight:600;' +
       'color:#0b1220;background:linear-gradient(135deg,#60a5fa,#818cf8);transition:filter .15s}' +
+      '#rhmod-panel .rhmod-row{display:flex;gap:6px;align-items:stretch}' +
+      '#rhmod-panel .rhmod-row input{flex:1;min-width:0;background:#0b1220;border:1px solid rgba(120,160,255,.4);border-radius:8px;color:#e2e8f0;padding:8px 10px;font-size:13px;outline:none}' +
+      '#rhmod-panel .rhmod-row button{white-space:nowrap;flex:0 0 auto}' +
+      '#rhmod-panel .rhmod-head button{cursor:pointer;background:none;border:none;color:#94a3b8;font-size:14px;line-height:1;padding:0 0 0 8px}' +
+      '#rhmod-panel.rhmod-mini{width:auto!important;min-width:0;padding:7px 12px}' +
+      '#rhmod-panel.rhmod-mini .rhmod-status,#rhmod-panel.rhmod-mini .rhmod-btns,#rhmod-panel.rhmod-mini .rhmod-note{display:none}' +
       '#rhmod-panel .rhmod-btns button:hover{filter:brightness(1.12)}' +
       '#rhmod-panel .rhmod-note{margin-top:10px;font-size:11px;color:#64748b;line-height:1.6}' +
       '#rhmod-panel.rhmod-hidden{display:none}' +
@@ -57,8 +66,19 @@
     document.body.appendChild(panel);
     var x = document.getElementById('rhmod-x');
     if (x) x.onclick = hide;
+    // 小型化：缩成标题条（状态记忆在 localStorage）
+    var miniBtn = document.getElementById('rhmod-mini');
+    var titleEl = panel.querySelector('.rhmod-head span');
+    function setMini(on) {
+      panel.classList.toggle('rhmod-mini', !!on);
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.7';
+      if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
+      try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
+    }
+    if (miniBtn) miniBtn.onclick = function () { setMini(!panel.classList.contains('rhmod-mini')); };
+    try { if (localStorage.getItem('rhmod_mini') === '1') setMini(true); } catch (e) {}
     Array.prototype.forEach.call(panel.querySelectorAll('button[data-act]'), function (b) {
-      b.onclick = function () { run(b.getAttribute('data-act')); };
+      b.onclick = function () { run(b.getAttribute('data-act'), b); };
     });
     // 恢复上次拖拽位置
     try {
@@ -177,7 +197,7 @@
     if (panel.classList.contains('rhmod-hidden')) show(); else hide();
   }
 
-  function run(act) {
+  function run(act, btnEl) {
     var h = window.__RH_MOD__;
     // 生态打理（收获/宰杀/烹饪/孵化/放养/喂食/浇水/施肥/自动开关）：不依赖废墟战斗，先处理
     if (act === 'ecoHarvest' || act === 'ecoSlaughter' || act === 'ecoCook' || act === 'ecoAll' ||
@@ -225,8 +245,43 @@
     }
     if (!h) { toast('未在废墟探索中，请先进入废墟', false); return; }
     if (act === 'unlockAll') {
-      try { h.unlockAllFloors(); toast('已解锁全部楼层！区域进度已拉满', true); }
+      try { h.unlockAllFloors(); toast('已解锁全部楼层！（本次启动游戏内有效，重启游戏后恢复原状）', true); }
       catch (e) { toast('执行失败：' + e.message, false); }
+    } else if (act === 'unlockTo') {
+      var inp = document.getElementById('rhmod-unlock-floor');
+      var n = parseInt(inp && inp.value, 10);
+      if (!n || n < 1) { toast('请先在输入框里填要解锁到的楼层号（1~999）', false); return; }
+      try { h.unlockToFloor(n); toast('已解锁到第 ' + n + ' 层（本次启动游戏内有效，重启游戏后恢复原状）', true); }
+      catch (e) { toast('执行失败：' + e.message, false); }
+    } else if (act === 'restoreFloors') {
+      try { h.restoreFloors(); toast('已还原MOD解锁状态（真实楼层进度不受影响）', true); }
+      catch (e) { toast('执行失败：' + e.message, false); }
+    } else if (act === 'restoreProgress') {
+      var inp3 = document.getElementById('rhmod-unlock-floor');
+      var n3 = parseInt(inp3 && inp3.value, 10);
+      if (isNaN(n3) || n3 < 0) { toast('请先在输入框里填还原到的楼层号（0 = 清空该区域全部楼层进度）', false); return; }
+      if (!btnEl) { toast('按钮状态异常，请重开面板', false); return; }
+      var nowTs = Date.now();
+      if (!btnEl.__rhArm || nowTs - btnEl.__rhArm > 5000) {
+        btnEl.__rhArm = nowTs;
+        btnEl.__rhText = btnEl.textContent;
+        btnEl.textContent = '⚠️ 将真实改动存档进度，再点一次确认';
+        setTimeout(function () { if (btnEl.__rhArm) { btnEl.textContent = btnEl.__rhText; btnEl.__rhArm = 0; } }, 5000);
+        return;
+      }
+      btnEl.__rhArm = 0;
+      if (btnEl.__rhText) btnEl.textContent = btnEl.__rhText;
+      try {
+        window.__RH_RESTORE_RESULT__ = null;
+        h.restoreProgressFloor(n3);
+        setTimeout(function () {
+          var rr = window.__RH_RESTORE_RESULT__;
+          if (!rr) { toast('已提交还原请求，请稍候或重进地图查看', true); return; }
+          if (rr.err) { toast('还原失败：' + rr.err, false); return; }
+          if (!rr.changed) { toast('该区域（' + rr.node + '）当前进度 ' + rr.old + ' 层，无需还原（只能往低还原）', false); return; }
+          toast('已把楼层进度从 ' + rr.old + ' 层还原到 ' + rr.set + ' 层（区域 ' + rr.node + '），游戏自动存档后写入存档', true);
+        }, 900);
+      } catch (e) { toast('执行失败：' + e.message, false); }
     } else if (act === 'jumpTop') {
       try { h.jumpToTopFloor(); toast('已跳到当前区域最高层', true); }
       catch (e) { toast('执行失败：' + e.message, false); }

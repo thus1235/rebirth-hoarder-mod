@@ -1,7 +1,9 @@
 ﻿# finalize.ps1 - 更新后自动整理：清理修改器目录 + 重建分享包 + 校验
 # 每次 MOD / 存档修改器更新后自动执行；也可随时手动运行。
 $ErrorActionPreference = 'Stop'
-$root = 'D:\桌面\末世房车MOD工具库'
+# 以脚本自身位置定位工具库根目录（开发源码的上一级），
+# 副本 / 移动目录后仍指向正确位置，不会误整理到原版工具库
+$root = Split-Path -Parent $PSScriptRoot
 $dst = "$root\修改器"
 $zip = "$root\分享包\末世房车MOD-脚本版.zip"
 
@@ -17,7 +19,9 @@ Get-ChildItem $dst -Filter '*.zip' -ErrorAction SilentlyContinue | ForEach-Objec
 
 Write-Host '[整理] 2/4 重建分享包...' -ForegroundColor Cyan
 if (Test-Path $zip) { Remove-Item $zip -Force }
-tar -a -c -f $zip --exclude="rh_backups" --exclude="*.zip" --exclude="*.log" -C $root '修改器'
+# 显式使用 Windows 自带 bsdtar（System32），避免 PATH 里 GNU tar 把 D:\ 当远程主机
+$tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+& $tarExe -a -c -f $zip --exclude="rh_backups" --exclude="*.zip" --exclude="*.log" -C $root '修改器'
 if ($LASTEXITCODE -ne 0) { Write-Host '[错误] 打包失败' -ForegroundColor Red; exit 1 }
 
 Write-Host '[整理] 3/4 校验分享包...' -ForegroundColor Cyan
