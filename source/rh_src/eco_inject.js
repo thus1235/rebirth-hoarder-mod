@@ -345,7 +345,8 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof y9 !== 'function' || typeof xo === 'undefined') { LAST.place = 0; return prev; }
+          // 【2026-09-06 修复】放入函数在新版为 b9（旧名 y9 已被其它函数占用，调用永远失败）
+          if (typeof b9 !== 'function' || typeof xo === 'undefined') { LAST.place = 0; LAST.placeMsg = '游戏接口未就绪（b9/xo 缺失），请反馈作者'; return prev; }
           // 收集库存动物（xo 有 animalConfig，排除蛋/成熟体——只放可养的）
           var animals = {};
           (prev.inventory || []).forEach(function (x) {
@@ -361,7 +362,7 @@ __rhEcoModBind9 = (function () {
             animals[d] = (animals[d] || 0) + (x.quantity || 1);
           });
           var types = Object.keys(animals);
-          if (!types.length) { LAST.place = 0; return prev; }
+          if (!types.length) { LAST.place = 0; LAST.placeMsg = '背包/仓库里没有可放入的动物（捕获的幼崽如 baby_duckling/baby_chick）'; return prev; }
           var remaining = {};
           types.forEach(function (t) { remaining[t] = animals[t]; });
           var placed = 0;
@@ -384,8 +385,9 @@ __rhEcoModBind9 = (function () {
                   }
                 }
                 if (!cell) break; // 槽满
-                // y9 基于传入的 incubatorState 计算，必须传入当前进度的 slots，否则每次只保留最后一只
-                var nr = y9(Object.assign({}, st0, { slots: slots }), t, cell.row, cell.col);
+                // b9(incubatorState, animalDefId, row, col)：新版放入函数（旧名 y9 已失效）
+                // 必须传入当前进度的 slots，否则每次只保留最后一只
+                var nr = b9(Object.assign({}, st0, { slots: slots }), t, cell.row, cell.col);
                 if (!nr) break;
                 slots = nr;
                 occupied[cell.row + ',' + cell.col] = true;
@@ -397,7 +399,7 @@ __rhEcoModBind9 = (function () {
             if (!changed) return dev;
             return Object.assign({}, dev, { incubatorState: Object.assign({}, st0, { slots: slots }) });
           });
-          if (!placed) { LAST.place = 0; return prev; }
+          if (!placed) { LAST.place = 0; LAST.placeMsg = '所有孵化器槽位已满'; return prev; }
           var inv = (prev.inventory || []).map(function (x) { return Object.assign({}, x); });
           var stash = (prev.stash || []).map(function (x) { return Object.assign({}, x); });
           types.forEach(function (t) {

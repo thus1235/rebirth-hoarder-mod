@@ -17,7 +17,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.10</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.11</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -74,7 +74,7 @@
     var titleEl = panel.querySelector('.rhmod-head span');
     function setMini(on) {
       panel.classList.toggle('rhmod-mini', !!on);
-      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.10';
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.11';
       if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
       try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
     }
@@ -230,7 +230,7 @@
           else if (act === 'ecoSlaughter') toast(s > 0 ? '已宰杀 ' + s + ' 只成熟动物' : '没有可宰杀的成熟动物', s > 0);
           else if (act === 'ecoCook') toast(c > 0 ? '已烹饪 ' + c + ' 道菜' : (st && st.cook === -1 ? '未安装电炉，无法烹饪' : '食材不足或未解锁菜谱'), c > 0);
           else if (act === 'ecoHatch') toast(ht > 0 ? '已放入 ' + ht + ' 枚蛋开始孵化' : '没有可孵化的蛋', ht > 0);
-          else if (act === 'ecoPlace') toast(p > 0 ? '已放入 ' + p + ' 只动物' : '没有可放入的动物或槽位已满', p > 0);
+          else if (act === 'ecoPlace') toast(p > 0 ? '已放入 ' + p + ' 只动物' : (st && st.placeMsg ? st.placeMsg : '没有可放入的动物或槽位已满'), p > 0);
           else if (act === 'ecoFeed') toast(fd > 0 ? '已为 ' + fd + ' 个孵化器补满饲料' : '饲料已满或库存饲料不足', fd > 0);
           else if (act === 'ecoWater') toast(w > 0 ? '已浇水 ' + w + ' 株作物' : '没有需要浇水的作物', w > 0);
           else if (act === 'ecoFert') toast(f > 0 ? '已施肥 ' + f + ' 株作物' : '没有需要施肥的作物', f > 0);
