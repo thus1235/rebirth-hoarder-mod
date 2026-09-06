@@ -65,6 +65,29 @@ namespace RhSaveTrainer
             string outS = s;
             string[,] rules = {
                 { "已读取（", "Loaded (" },
+                { "存档 revision 异常（", "Save revision error (" },
+                { "未找到存档: ", "Save not found: " },
+                { "已写入 ✓ revision=", "Written ✓ revision=" },
+                { "已写入自动重载标记", "Auto-reload marker written" },
+                { "阻止写入：revision 异常 ", "Write blocked: revision error " },
+                { "阻止写入：磁盘 revision ", "Write blocked: disk revision " },
+                { "当前存档没有 P2 战斗数据，不能修改该字段: ", "No P2 combat data; cannot edit: " },
+                { "当前存档没有 P2 数据，不能修改该字段: ", "No P2 data; cannot edit: " },
+                { "当前存档没有进行中的局，不能修改: ", "No active run; cannot edit: " },
+                { "字段 ", "Field " },
+                { " 需要数字: ", " expects a number: " },
+                { " 需要整数，得到: ", " expects an integer, got: " },
+                { " 需要数字，得到: ", " expects a number, got: " },
+                { "需要数字: ", "number required: " },
+                { "，得到: ", ", got: " },
+                { "标记写入失败: ", "Marker write failed: " },
+                { "存档缺少 payload", "Save missing payload" },
+                { "存档含有非有限数字", "Save contains non-finite numbers" },
+                { "警告：读取到异常 revision=", "Warning: abnormal revision=" },
+                { " 数量 = ", " quantity = " },
+                { "LAYOUTCHECK 发现 ", "LAYOUTCHECK found " },
+                { " 处重叠:", " overlap(s):" },
+                { "，可能是游戏正在运行或读取到了错误文件。", ", possibly because the game is running or the file is corrupt." },
                 { "） revision", ") revision" },
                 { "就绪。请先关闭游戏再修改存档。", "Ready. Please close the game before editing saves." },
                 { "已备份 ", "Backed up " },
@@ -371,6 +394,39 @@ namespace RhSaveTrainer
             Add("种子", "Seed");
             Add("动物", "Animal");
             Add("优良", "Fine");
+            Add("白", "Wh");
+            Add("绿", "Gr");
+            Add("蓝", "Bl");
+            Add("紫", "Pu");
+            Add("金", "Go");
+            Add("装备", "Gear");
+            Add("（无装备）", "(no equipment)");
+            Add("（无卡牌）", "(no cards)");
+            Add("（无物品）", "(no items)");
+            Add("（无匹配物品）", "(no matching items)");
+            Add("（未读取存档）", "(save not loaded)");
+            Add("（无匹配物品，换个关键词试试）", "(no match, try another keyword)");
+            Add("🌐 Language / 语言", "🌐 Language / 语言");
+            Add("结束", "End");
+        }
+
+
+        // 存档槽位显示名（下拉框/状态栏用；内部仍用原始 id）
+        public static string SlotDisplay(string slot)
+        {
+            if (!En)
+            {
+                if (slot == "current") return "当前";
+                if (slot == "manual-1") return "手动存档1";
+                if (slot == "manual-2") return "手动存档2";
+                if (slot == "manual-3") return "手动存档3";
+                return slot;
+            }
+            if (slot == "current") return "Current";
+            if (slot == "manual-1") return "Manual 1";
+            if (slot == "manual-2") return "Manual 2";
+            if (slot == "manual-3") return "Manual 3";
+            return slot;
         }
 
         public static string LangSlotCn(string s)

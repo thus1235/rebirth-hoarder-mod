@@ -695,7 +695,7 @@ namespace RhSaveTrainer
         List<InvItem> _invItems = new List<InvItem>();
 
         string SavesDir { get { return _dirBox.Text.Trim(); } }
-        string SlotFile { get { return Path.Combine(SavesDir, "progress-" + _slotBox.SelectedItem + ".json"); } }
+        string SlotFile { get { return Path.Combine(SavesDir, "progress-" + Slots[_slotBox.SelectedIndex] + ".json"); } }
 
         public MainForm()
         {
@@ -775,7 +775,7 @@ namespace RhSaveTrainer
             _slotBox = new ComboBox();
             _slotBox.DropDownStyle = ComboBoxStyle.DropDownList;
             _slotBox.Width = 110;
-            foreach (string s in Slots) _slotBox.Items.Add(s);
+            foreach (string s in Slots) _slotBox.Items.Add(Lang.SlotDisplay(s));
             _slotBox.SelectedIndex = 0;
             _slotBox.SelectedIndexChanged += delegate(object s, EventArgs e) { DoLoad(); };
             bar2.Controls.Add(_slotBox, 1, 0);
@@ -786,8 +786,8 @@ namespace RhSaveTrainer
             bar2.Controls.Add(_saveBtn, 4, 0);
 
             Button langBtn = new Button();
-            langBtn.Text = "🌐 中/EN";
-            langBtn.Width = 76;
+            langBtn.Text = "🌐 Language / 语言";
+            langBtn.Width = 150;
             langBtn.Anchor = AnchorStyles.Left;
             langBtn.Click += delegate(object s, EventArgs e) { Lang.ToggleAndRestart(); };
             bar2.Controls.Add(langBtn, 5, 0);
@@ -1177,8 +1177,8 @@ namespace RhSaveTrainer
                 object rv;
                 string rev = _env.TryGetValue("revision", out rv) ? Convert.ToString(rv, CultureInfo.InvariantCulture) : "?";
                 MarkClean();
-                LogWrite("读取存档 slot=" + _slotBox.SelectedItem + " revision=" + rev);
-                SetStatus("已读取（" + _slotBox.SelectedItem + "） revision=" + rev);
+                LogWrite("读取存档 slot=" + Slots[_slotBox.SelectedIndex] + " revision=" + rev);
+                SetStatus("已读取（" + Lang.SlotDisplay(Slots[_slotBox.SelectedIndex]) + "） revision=" + rev);
                 // 防护：游戏运行/保存中可能读到被临时替换的异常档（revision 为 0/1 空档）。
                 // 注意：正常档即使新轮回/新档 revision 也可能只有几十，阈值必须低，只拦 revision<2。
                 object revObj;
@@ -1283,7 +1283,7 @@ namespace RhSaveTrainer
                     }
                 }
             }
-            if (_invItems.Count == 0) _invList.Items.Add("（无物品）");
+            if (_invItems.Count == 0) _invList.Items.Add(Lang.L("（无物品）"));
             _invQty.Value = 0;
             PopulateNewTabs();
             _loading = false;
@@ -1434,7 +1434,7 @@ namespace RhSaveTrainer
                     if (IsEquipment(item))
                     {
                         object lv, en;
-                        gearPart = " [装备"
+                        gearPart = " [" + Lang.L("装备")
                             + (item.TryGetValue("level", out lv) ? " Lv" + NumDisplay(lv) : "")
                             + (item.TryGetValue("enhanceLevel", out en) ? " +" + NumDisplay(en) : "")
                             + (item.ContainsKey("rarity") ? " " + RarityName(Convert.ToString(item["rarity"])) : "")
@@ -1444,7 +1444,7 @@ namespace RhSaveTrainer
                     _invList.Items.Add(disp + "  x" + qty + gearPart);
                 }
             }
-            if (_invItems.Count == 0) _invList.Items.Add(_payload == null ? "（未读取存档）" : (kw.Length > 0 ? "（无匹配物品）" : "（无物品）"));
+            if (_invItems.Count == 0) _invList.Items.Add(_payload == null ? Lang.L("（未读取存档）") : (kw.Length > 0 ? Lang.L("（无匹配物品）") : Lang.L("（无物品）")));
         }
 
         void DoBackup()
@@ -1708,7 +1708,7 @@ namespace RhSaveTrainer
                 }
                 catch { }
                 MarkClean();
-                LogWrite("写入成功 slot=" + _slotBox.SelectedItem + " revision=" + env["revision"] + " | " + sum.Trim());
+                LogWrite("写入成功 slot=" + Slots[_slotBox.SelectedIndex] + " revision=" + env["revision"] + " | " + sum.Trim());
                 SetStatus("已写入 ✓ revision=" + env["revision"]);
                 Msg("修改已写入:\n" + path + "\n\nrevision 已 +1，checksum 已重新计算，修改前存档已自动备份。\n启动游戏即可生效（请保持游戏关闭状态）。", "写入成功", MessageBoxIcon.Information);
             }

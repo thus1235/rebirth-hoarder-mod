@@ -189,7 +189,7 @@ namespace RhSaveTrainer
                 if (list.Count > 40) list.RemoveRange(40, list.Count - 40);
             }
             foreach (ItemDef d in list) { _addShown.Add(d); _addResults.Items.Add(AddDisplay(d)); }
-            if (_addShown.Count == 0) _addResults.Items.Add("（无匹配物品，换个关键词试试）");
+            if (_addShown.Count == 0) _addResults.Items.Add(Lang.L("（无匹配物品，换个关键词试试）"));
             _addResults.EndUpdate();
             UpdateGearPanel();
         }

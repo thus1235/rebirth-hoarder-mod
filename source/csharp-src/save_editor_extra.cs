@@ -730,7 +730,7 @@ namespace RhSaveTrainer
             string name = ItemDisplayName(defId);
             string rarityCn = RarityName(rarity);
             string idPart = name == defId ? "" : "(" + defId + ")";
-            return (slot.Length > 0 ? "[" + slot + "] " : "") + name + idPart
+            slot = Lang.LangSlotCn(slot); return (slot.Length > 0 ? "[" + slot + "] " : "") + name + idPart
                 + (rarityCn.Length > 0 ? " " + rarityCn : "") + " Lv" + lvl + " +" + enh;
         }
 
@@ -748,7 +748,7 @@ namespace RhSaveTrainer
             }
             string name = ItemDisplayName(id);
             string idPart = name == id ? "" : "(" + id + ")";
-            return name + idPart + "  白" + w + " 绿" + g + " 蓝" + b + " 紫" + p + " 金" + gd;
+            return name + idPart + "  " + Lang.L("白") + w + " " + Lang.L("绿") + g + " " + Lang.L("蓝") + b + " " + Lang.L("紫") + p + " " + Lang.L("金") + gd;
         }
 
         Dictionary<string, object> FindOwnedCards()
@@ -806,8 +806,9 @@ namespace RhSaveTrainer
                     int lv = p2.TryGetValue("playerLevel", out lvObj) ? Convert.ToInt32(Convert.ToDouble(lvObj)) : 0;
                     int cap = Math.Max(0, (lv - 1) * 2);
                     int maxSingle = 5 + cap;
-                    _charTip.Text = "当前 Lv" + lv + "：力量/敏捷/体质/感知 每项基础 5 点，四项额外加成加起来最多 " + cap
-                        + " 点（单项最高 " + maxSingle + "）。超过会被游戏重置，建议四项额外加成合计 ≤ " + cap + " 点，或调高等级。";
+                    _charTip.Text = Lang.En
+                        ? "Current Lv" + lv + ": each of STR/AGI/CON/PER starts at 5; total extra bonuses capped at " + cap + " (max " + maxSingle + " each). Higher values get reset by the game; keep the four bonus totals \u2264 " + cap + " points, or raise the level."
+                        : "当前 Lv" + lv + "：力量/敏捷/体质/感知 每项基础 5 点，四项额外加成加起来最多 " + cap + " 点（单项最高 " + maxSingle + "）。超过会被游戏重置，建议四项额外加成合计 ≤ " + cap + " 点，或调高等级。";
                 }
                 Put(_medEntries, "awakeningStage", p2.TryGetValue("awakeningStage", out v) ? v : null);
                 Put(_medEntries, "awakeningExpMultiplier", p2.TryGetValue("awakeningExpMultiplier", out v) ? v : null);
@@ -846,7 +847,7 @@ namespace RhSaveTrainer
                     }
                 }
             }
-            if (_equipIndexes.Count == 0) _equipList.Items.Add("（无装备）");
+            if (_equipIndexes.Count == 0) _equipList.Items.Add(Lang.L("（无装备）"));
 
             Dictionary<string, object> owned = FindOwnedCards();
             if (owned != null)
@@ -855,7 +856,7 @@ namespace RhSaveTrainer
                     _cardIds.Add(kv2.Key);
                     _cardList.Items.Add(FormatCard(kv2.Key, kv2.Value as Dictionary<string, object>));
                 }
-            if (_cardIds.Count == 0) _cardList.Items.Add("（无卡牌）");
+            if (_cardIds.Count == 0) _cardList.Items.Add(Lang.L("（无卡牌）"));
             else _cardList.SelectedIndex = 0;  // 自动选中第一张：改数量立即生效
             if (_equipIndexes.Count > 0) _equipList.SelectedIndex = 0;  // 自动选中第一件装备
             _cardWhite.Value = 0; _cardGreen.Value = 0; _cardBlue.Value = 0;
