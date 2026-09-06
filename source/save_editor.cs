@@ -682,6 +682,7 @@ namespace RhSaveTrainer
         NumericUpDown _invQty;
         NumericUpDown _invQtyAll;
         ComboBox _invScope;
+        TextBox _invFilter;
         Button _saveBtn;
         bool _dirty;
 
@@ -698,7 +699,7 @@ namespace RhSaveTrainer
 
         public MainForm()
         {
-            Text = "末世：我有一辆房车 - 存档修改器 v3.5（免环境版）";
+            Text = "末世：我有一辆房车 - 存档修改器 v3.19（免环境版）";
             Font = new Font("Microsoft YaHei UI", 9f);
             ClientSize = new Size(880, 640);
             MinimumSize = new Size(800, 580);
@@ -755,8 +756,9 @@ namespace RhSaveTrainer
             TableLayoutPanel bar2 = new TableLayoutPanel();
             bar2.Dock = DockStyle.Top;
             bar2.Height = 36;
-            bar2.ColumnCount = 6;
+            bar2.ColumnCount = 7;
             bar2.Padding = new Padding(8, 0, 8, 4);
+            bar2.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar2.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar2.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar2.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -783,13 +785,20 @@ namespace RhSaveTrainer
             _saveBtn = MakeButton("写入修改", DoSave);
             bar2.Controls.Add(_saveBtn, 4, 0);
 
+            Button langBtn = new Button();
+            langBtn.Text = "🌐 中/EN";
+            langBtn.Width = 76;
+            langBtn.Anchor = AnchorStyles.Left;
+            langBtn.Click += delegate(object s, EventArgs e) { Lang.ToggleAndRestart(); };
+            bar2.Controls.Add(langBtn, 5, 0);
+
             // 状态文字：放回第二行右侧（消息已简化，单行显示，不换行重叠）
             _status = new Label();
             _status.Text = "就绪。请先关闭游戏再修改存档。";
             _status.AutoSize = true;
             _status.Anchor = AnchorStyles.Right;
             _status.ForeColor = Color.FromArgb(102, 102, 102);
-            bar2.Controls.Add(_status, 5, 0);
+            bar2.Controls.Add(_status, 6, 0);
 
             Label tip = new Label();
             tip.Dock = DockStyle.Bottom;
@@ -806,6 +815,7 @@ namespace RhSaveTrainer
             tp = BuildRunTab(); tp.Tag = "out"; _tabs.TabPages.Add(tp);
             tp = BuildP2Tab(); tp.Tag = "out"; _tabs.TabPages.Add(tp);
             tp = BuildInvTab(); tp.Tag = "out"; _tabs.TabPages.Add(tp);
+            tp = BuildAddTab(); tp.Tag = "out"; _tabs.TabPages.Add(tp);
             tp = BuildCharTab(); tp.Tag = "out"; _tabs.TabPages.Add(tp);
             tp = BuildEquipTab(); tp.Tag = "out"; _tabs.TabPages.Add(tp);
             tp = BuildCardTab(); tp.Tag = "live"; _tabs.TabPages.Add(tp);
@@ -818,6 +828,7 @@ namespace RhSaveTrainer
             Controls.Add(top);
             Controls.Add(tip);
             ApplyTheme();
+            Lang.Walk(this);   // 双语：按当前语言统一翻译界面文案（含页签/按钮/字段标签）
 
             // 关闭窗口时：有异常则写日志，否则删除残留 rh_editor.log，保持目录干净
             this.FormClosed += delegate(object s, FormClosedEventArgs e) { FlushLog(); };
@@ -940,11 +951,35 @@ namespace RhSaveTrainer
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
 
+            // 左列：过滤框 + 物品列表
+            Panel left = new Panel();
+            left.Dock = DockStyle.Fill;
+
+            Panel filterPanel = new Panel();
+            filterPanel.Dock = DockStyle.Top;
+            filterPanel.Height = 30;
+
+            Label fl = new Label();
+            fl.Text = "🔍 过滤:";
+            fl.Location = new Point(2, 8);
+            fl.AutoSize = true;
+            filterPanel.Controls.Add(fl);
+
+            _invFilter = new TextBox();
+            _invFilter.Location = new Point(62, 5);
+            _invFilter.Width = 340;
+            _invFilter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            _invFilter.TextChanged += delegate(object s, EventArgs e) { RepopulateInv(); };
+            filterPanel.Controls.Add(_invFilter);
+            left.Controls.Add(filterPanel);
+
             _invList = new ListBox();
             _invList.Dock = DockStyle.Fill;
             _invList.Font = new Font("Microsoft YaHei UI", 9.5f);
             _invList.SelectedIndexChanged += delegate(object s, EventArgs e) { OnInvSelect(); };
-            layout.Controls.Add(_invList, 0, 0);
+            left.Controls.Add(_invList);
+            left.Controls.SetChildIndex(filterPanel, 0);
+            layout.Controls.Add(left, 0, 0);
 
             Panel right = new Panel();
             right.Dock = DockStyle.Fill;
@@ -1045,7 +1080,7 @@ namespace RhSaveTrainer
             store[key] = tb;
             tbl.RowCount++;
             Label l = new Label();
-            l.Text = display;   // 只显示中文，隐藏英文 key
+            l.Text = Lang.L(label);   // 双语显示（存储键不变），隐藏英文 key
             l.AutoSize = true;
             l.Margin = new Padding(6, 4, 6, 2);
             tbl.Controls.Add(l, 0, tbl.RowCount - 1);
@@ -1054,7 +1089,7 @@ namespace RhSaveTrainer
 
         void SetStatus(string msg)
         {
-            _status.Text = msg;
+            _status.Text = Lang.S(msg);
             _status.ForeColor = Color.FromArgb(102, 102, 102);
         }
 
@@ -1062,7 +1097,7 @@ namespace RhSaveTrainer
         void Msg(string text, string title, MessageBoxIcon icon)
         {
             if (_silent) { LogWrite(title + " | " + text); return; }
-            MessageBox.Show(this, text, title, MessageBoxButtons.OK, icon);
+            MessageBox.Show(this, Lang.S(text), Lang.S(title), MessageBoxButtons.OK, icon);
         }
 
         // 写自动重载标记（游戏 mod 通过 mod-storage 检测；该文件不受游戏自动保存覆盖）
@@ -1379,6 +1414,7 @@ namespace RhSaveTrainer
         {
             _invList.Items.Clear();
             _invItems.Clear();
+            string kw = _invFilter != null ? _invFilter.Text.Trim().ToLower() : "";
             if (_payload == null) return;
             bool stash = CurrentScopeStash();
             List<object> inv = GetItemList(stash);
@@ -1392,11 +1428,23 @@ namespace RhSaveTrainer
                     string defId = item.TryGetValue("defId", out dv) ? Convert.ToString(dv) : "?";
                     string iid = item.TryGetValue("instanceId", out iv) ? Convert.ToString(iv) : "";
                     string qty = item.TryGetValue("quantity", out qv) ? NumDisplay(qv) : "0";
+                    string disp = ItemDisplayName(defId);
+                    if (kw.Length > 0 && disp.ToLower().IndexOf(kw) < 0 && defId.ToLower().IndexOf(kw) < 0) continue;
+                    string gearPart = "";
+                    if (IsEquipment(item))
+                    {
+                        object lv, en;
+                        gearPart = " [装备"
+                            + (item.TryGetValue("level", out lv) ? " Lv" + NumDisplay(lv) : "")
+                            + (item.TryGetValue("enhanceLevel", out en) ? " +" + NumDisplay(en) : "")
+                            + (item.ContainsKey("rarity") ? " " + RarityName(Convert.ToString(item["rarity"])) : "")
+                            + "]";
+                    }
                     _invItems.Add(new InvItem(i, defId, iid, stash));
-                    _invList.Items.Add(ItemDisplayName(defId) + "  x" + qty);
+                    _invList.Items.Add(disp + "  x" + qty + gearPart);
                 }
             }
-            if (_invItems.Count == 0) _invList.Items.Add("（无物品）");
+            if (_invItems.Count == 0) _invList.Items.Add(_payload == null ? "（未读取存档）" : (kw.Length > 0 ? "（无匹配物品）" : "（无物品）"));
         }
 
         void DoBackup()

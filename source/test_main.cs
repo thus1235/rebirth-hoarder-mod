@@ -13,7 +13,12 @@ namespace RhSaveTrainer
         {
             try
             {
-                if (args.Length >= 1 && args[0] == "names")
+                if (args.Length >= 1 && args[0] == "items")
+                {
+                    // items : 物品表解析 + 搜索打分自检（save_editor_add.cs）
+                    return MainForm.ItemsSelfTest();
+                }
+                else if (args.Length >= 1 && args[0] == "names")
                 {
                     // names : 验证中文名映射解析
                     string[] ids = { "gatling_gun", "ar_winter", "ac_chip_atk", "mat_weapon_parts", "medkit",

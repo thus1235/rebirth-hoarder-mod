@@ -2,8 +2,8 @@
 chcp 936 >nul
 set CSC=C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe
 if not exist "%CSC%" set CSC=C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
-if not exist "%CSC%" echo [´íÎó] Î´ÕÒµ½ .NET Framework ±àÒëÆ÷ && pause && exit /b 1
-"%CSC%" /nologo /codepage:65001 /target:winexe /out:´æµµÐÞ¸ÄÆ÷.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Numerics.dll save_editor.cs save_editor_extra.cs game_names.cs
+if not exist "%CSC%" echo [ï¿½ï¿½ï¿½ï¿½] Î´ï¿½Òµï¿½ .NET Framework ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ && pause && exit /b 1
+"%CSC%" /nologo /codepage:65001 /target:winexe /out:ï¿½æµµï¿½Þ¸ï¿½ï¿½ï¿½.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Numerics.dll save_editor.cs save_editor_extra.cs save_editor_add.cs lang.cs game_names.cs item_table.cs
 echo.
-echo ±àÒëÍê³É£º%CD%\´æµµÐÞ¸ÄÆ÷.exe
+echo ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½%CD%\ï¿½æµµï¿½Þ¸ï¿½ï¿½ï¿½.exe
 pause

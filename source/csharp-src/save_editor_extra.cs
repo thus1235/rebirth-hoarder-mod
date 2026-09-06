@@ -21,7 +21,7 @@ namespace RhSaveTrainer
             _dirty = true;
             if (_saveBtn != null)
             {
-                _saveBtn.Text = "写入修改 ●";
+                _saveBtn.Text = Lang.L("写入修改 ●");
                 _saveBtn.BackColor = Color.FromArgb(255, 244, 200);
             }
         }
@@ -31,7 +31,7 @@ namespace RhSaveTrainer
             _dirty = false;
             if (_saveBtn != null)
             {
-                _saveBtn.Text = "写入修改";
+                _saveBtn.Text = Lang.L("写入修改");
                 _saveBtn.BackColor = C_GREEN;
                 _saveBtn.FlatAppearance.MouseOverBackColor = C_GREEN_HOVER;
             }
@@ -283,7 +283,7 @@ namespace RhSaveTrainer
         {
             if (_rarityNames == null) InitNames();
             string n;
-            if (r != null && _rarityNames.TryGetValue(r, out n)) return n;
+            if (r != null && _rarityNames.TryGetValue(r, out n)) return Lang.L(n);
             return r != null ? r : "";
         }
 
@@ -406,7 +406,7 @@ namespace RhSaveTrainer
             right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // 词缀表格占满剩余，滚动条在最底，下方无控件
 
             _equipSlotLabel = new Label();
-            _equipSlotLabel.Text = "槽位：-";
+            _equipSlotLabel.Text = Lang.L("槽位：") + "-";
             _equipSlotLabel.AutoSize = true;
             _equipSlotLabel.ForeColor = Color.FromArgb(60, 100, 180);
             _equipSlotLabel.Font = new Font("Microsoft YaHei UI", 9.5f, FontStyle.Bold);
@@ -415,7 +415,7 @@ namespace RhSaveTrainer
             right.SetColumnSpan(_equipSlotLabel, 2);
 
             _equipAffixNameLabel = new Label();
-            _equipAffixNameLabel.Text = "词缀名：-";
+            _equipAffixNameLabel.Text = Lang.L("词缀名：") + "-";
             _equipAffixNameLabel.AutoSize = true;
             _equipAffixNameLabel.ForeColor = Color.FromArgb(150, 100, 40);
             _equipAffixNameLabel.Margin = new Padding(2, 0, 2, 4);
@@ -573,7 +573,7 @@ namespace RhSaveTrainer
             AddField(tbl, null, "路线 selectedRoute", out _routeText);
             _routeText.TextChanged += delegate(object s, EventArgs e) { MarkDirty(); };
             _routeNameLabel = new Label();
-            _routeNameLabel.Text = "（中文名）";
+            _routeNameLabel.Text = Lang.L("（中文名）");
             _routeNameLabel.AutoSize = true;
             _routeNameLabel.ForeColor = Color.FromArgb(60, 100, 180);
             _routeNameLabel.Margin = new Padding(6, 4, 6, 2);
@@ -649,7 +649,7 @@ namespace RhSaveTrainer
             int sp = label.IndexOf(' ');
             string display = sp > 0 ? label.Substring(0, sp) : label;
             Label l = new Label();
-            l.Text = display;   // 只显示中文
+            l.Text = Lang.L(label);   // 双语显示（存储键不变）
             l.AutoSize = true;
             l.Anchor = AnchorStyles.Left;
             l.Margin = new Padding(2, 6, 2, 2);
@@ -668,7 +668,7 @@ namespace RhSaveTrainer
             int sp = label.IndexOf(' ');
             string display = sp > 0 ? label.Substring(0, sp) : label;
             Label l = new Label();
-            l.Text = display;   // 只显示中文
+            l.Text = Lang.L(label);   // 双语显示（存储键不变）
             l.AutoSize = true;
             l.Anchor = AnchorStyles.Left;
             l.Margin = new Padding(2, 6, 2, 2);
@@ -694,7 +694,7 @@ namespace RhSaveTrainer
             if (store != null) store[key] = tb;
             tbl.RowCount++;
             Label l = new Label();
-            l.Text = display;   // 只显示中文
+            l.Text = Lang.L(label);   // 双语显示（存储键不变）
             l.AutoSize = true;
             l.Margin = new Padding(6, 4, 6, 2);
             tbl.Controls.Add(l, 0, tbl.RowCount - 1);
@@ -775,8 +775,8 @@ namespace RhSaveTrainer
             if (_equipAffixes != null) _equipAffixes.Rows.Clear();
             foreach (KeyValuePair<string, TextBox> kv in _charEntries) kv.Value.Text = "";
             foreach (KeyValuePair<string, TextBox> kv in _medEntries) kv.Value.Text = "";
-            if (_routeText != null) { _routeText.Text = ""; _routePending.Text = ""; _routeMilestone.Text = ""; _routeNameLabel.Text = "（中文名）"; }
-            if (_equipSlotLabel != null) { _equipSlotLabel.Text = "槽位：-"; _equipAffixNameLabel.Text = "词缀名：-"; }
+            if (_routeText != null) { _routeText.Text = ""; _routePending.Text = ""; _routeMilestone.Text = ""; _routeNameLabel.Text = Lang.L("（中文名）"); }
+            if (_equipSlotLabel != null) { _equipSlotLabel.Text = Lang.L("槽位：") + "-"; _equipAffixNameLabel.Text = Lang.L("词缀名：") + "-"; }
             if (_payload == null) return;
 
             Dictionary<string, object> gs = GetGameState();
@@ -888,8 +888,8 @@ namespace RhSaveTrainer
             if (p2 != null && p2.TryGetValue("equippedGear", out ego)) eg = ego as Dictionary<string, object>;
             string iid = item.TryGetValue("instanceId", out v) ? Convert.ToString(v) : "";
             string slot = SlotName(eg, iid);
-            _equipSlotLabel.Text = "槽位：" + (slot.Length > 0 ? slot : "未装备");
-            _equipAffixNameLabel.Text = "词缀名：" + (item.TryGetValue("affixName", out v) ? Convert.ToString(v) : "-");
+            _equipSlotLabel.Text = Lang.L("槽位：") + (slot.Length > 0 ? Lang.LangSlotCn(slot) : Lang.L("未装备"));
+            _equipAffixNameLabel.Text = Lang.L("词缀名：") + (item.TryGetValue("affixName", out v) ? Convert.ToString(v) : "-");
             _equipAffixes.Rows.Clear();
             object ao;
             if (item.TryGetValue("affixes", out ao) && ao is List<object>)

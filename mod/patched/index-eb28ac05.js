@@ -9,52 +9,53 @@
   var KEY = 'F8';
   var panel = null, statusEl = null, toastEl = null, toastTimer = null;
 
+  // ===== 双语（简体中文 / English）：localStorage 记忆，🌐 按钮切换并重建面板 =====
+  var langEn = false;
+  try { langEn = localStorage.getItem('rhmod_lang') === 'en'; } catch (eLang0) {}
+  function t(zh, en) { return langEn ? en : zh; }
+  var VER = 'v3.19';
+
   function $(id) { return document.getElementById(id); }
+
+  function buildHtml() {
+    return '<div class="rhmod-head"><span>' + t('🔧 RH 内置修改器 ', '🔧 RH Mod Panel ') + VER + '</span>' +
+      '<button id="rhmod-lang" title="中文 / English">🌐</button>' +
+      '<button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-status">' + t('状态：', 'Status: ') + '<span id="rhmod-status-text">' + t('检测中…', 'detecting…') + '</span></div>' +
+      '<div class="rhmod-btns">' +
+      '<button data-act="instantWin">' + t('⚡ 当前战斗直接胜利', '⚡ Win current battle') + '</button>' +
+      '<button data-act="autoWin" id="rhmod-autowin">' + t('🎯 自动秒杀模式：关', '🎯 Auto-win: OFF') + '</button>' +
+      '<button data-act="unlockAll">' + t('🔓 一键解锁全部楼层', '🔓 Unlock all floors') + '</button>' +
+      '<div class="rhmod-row"><input id="rhmod-unlock-floor" type="number" min="0" max="999" placeholder="' + t('楼层号，如 30', 'floor no., e.g. 30') + '"><button data-act="unlockTo">' + t('🔓 解锁到指定楼层', '🔓 Unlock up to floor') + '</button></div>' +
+      '<button data-act="restoreProgress">' + t('📉 还原已解锁楼层到输入的层数', '📉 Restore floor progress to input') + '</button>' +
+      '<button data-act="restoreFloors">' + t('↩️ 仅还原MOD解锁（不改动真实进度）', '↩️ Undo MOD unlocks only') + '</button>' +
+      '<button data-act="jumpTop">' + t('🔼 跳到当前区域最高层', '🔼 Jump to top floor') + '</button>' +
+      '<button data-act="forceExit">' + t('🚪 强制撤离当前区域', '🚪 Force evacuate') + '</button>' +
+      '<button data-act="ecoHarvest">🌾 ' + t('一键收获全部种植', 'Harvest all crops') + '</button>' +
+      '<button data-act="ecoPlant">🌱 ' + t('一键种植空槽（用库存种子）', 'Plant all empty slots') + '</button>' +
+      '<button data-act="ecoRipen">🌱 ' + t('一键催熟全部作物（立即成熟）', 'Ripen all crops now') + '</button>' +
+      '<button data-act="ecoWater">💧 ' + t('一键浇水全部', 'Water all') + '</button>' +
+      '<button data-act="ecoFert">🧪 ' + t('一键施肥全部', 'Fertilize all') + '</button>' +
+      '<button data-act="ecoSlaughter">🐄 ' + t('一键宰杀全部养殖', 'Slaughter all livestock') + '</button>' +
+      '<button data-act="ecoHatch">🥚 ' + t('一键孵化全部蛋', 'Hatch all eggs') + '</button>' +
+      '<button data-act="ecoPlace">🐣 ' + t('一键放入全部动物', 'Place all animals') + '</button>' +
+      '<button data-act="ecoFeed">🍖 ' + t('一键喂食补满饲料', 'Refill feed') + '</button>' +
+      '<button data-act="ecoCook">🍳 ' + t('一键烹饪全部菜谱', 'Cook all recipes') + '</button>' +
+      '<button data-act="ecoAll">✨ ' + t('一键全部完成（种植+催熟+收获+养殖+孵化+烹饪）', 'Do everything (plant+ripen+harvest+livestock+hatch+cook)') + '</button>' +
+      '<button data-act="ecoAuto" id="rhmod-ecoauto">' + t('🤖 自动打理：关', '🤖 Auto-maintain: OFF') + '</button>' +
+      '</div>' +
+      '<div class="rhmod-note">' +
+      t('已内置：战斗后自动领奖 / 楼层自由选择(无需定位器) / 默认最高层<br>解锁楼层：全部解锁 或 解锁到指定楼层（本次启动内有效）<br>📉 还原已解锁楼层：改写真实楼层进度（含自己打上去的），填 0 = 清空该区域进度；游戏自动存档后生效，建议先用存档修改器备份<br>「仅还原MOD解锁」只撤销 MOD 的解锁标志，不动真实进度<br>生态打理：收获/浇水/施肥/宰杀/孵化/放养/喂食/烹饪（自动模式每 15 秒执行一次）<br>🎁 添加物品/装备已移至「存档修改器」的「添加物品」页（搜索引擎式搜索）<br>按 ',
+        'Built-in: auto loot after battle / free floor select (no locator) / default top floor<br>Unlock: all floors, or up to a given floor (this session only)<br>📉 Restore progress: rewrites real floor progress (fill 0 = clear zone); applies after the game auto-saves - back up first with the Save Editor<br>\"Undo MOD unlocks\" only clears MOD flags, real progress untouched<br>Eco: harvest/water/fertilize/slaughter/hatch/place/feed/cook (auto mode every 15s)<br>🎁 Add items/gear moved to the Save Editor \"Add Items\" tab (search-engine style)<br>Press ') +
+      KEY + t(' 打开或关闭面板', ' to toggle this panel') + '</div>';
+  }
 
   function ensure() {
     if (panel && panel.isConnected) return;
     panel = document.createElement('div');
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
-    panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.13</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
-      '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
-      '<div class="rhmod-btns">' +
-      '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
-      '<button data-act="autoWin" id="rhmod-autowin">🎯 自动秒杀模式：关</button>' +
-      '<button data-act="unlockAll">🔓 一键解锁全部楼层</button>' +
-      '<div class="rhmod-row"><input id="rhmod-unlock-floor" type="number" min="0" max="999" placeholder="楼层号，如 30"><button data-act="unlockTo">🔓 解锁到指定楼层</button></div>' +
-      '<button data-act="restoreProgress">📉 还原已解锁楼层到输入的层数</button>' +
-      '<button data-act="restoreFloors">↩️ 仅还原MOD解锁（不改动真实进度）</button>' +
-      '<button data-act="jumpTop">🔼 跳到当前区域最高层</button>' +
-      '<button data-act="forceExit">🚪 强制撤离当前区域</button>' +
-      '<button data-act="ecoHarvest">🌾 一键收获全部种植</button>' +
-      '<button data-act="ecoPlant">🌱 一键种植空槽（用库存种子）</button>' +
-      '<button data-act="ecoRipen">🌱 一键催熟全部作物（立即成熟）</button>' +
-      '<button data-act="ecoWater">💧 一键浇水全部</button>' +
-      '<button data-act="ecoFert">🧪 一键施肥全部</button>' +
-      '<button data-act="ecoSlaughter">🐄 一键宰杀全部养殖</button>' +
-      '<button data-act="ecoHatch">🥚 一键孵化全部蛋</button>' +
-      '<button data-act="ecoPlace">🐣 一键放入全部动物</button>' +
-      '<button data-act="ecoFeed">🍖 一键喂食补满饲料</button>' +
-      '<button data-act="ecoCook">🍳 一键烹饪全部菜谱</button>' +
-      '<button data-act="ecoAll">✨ 一键全部完成（种植+催熟+收获+养殖+孵化+烹饪）</button>' +
-      '<button data-act="ecoAuto" id="rhmod-ecoauto">🤖 自动打理：关</button>' +
-      '<div class="rhmod-sep">🎁 添加物品 / 装备</div>' +
-      '<div class="rhmod-row"><input id="rhmod-item-search" placeholder="搜索物品名或ID…"></div>' +
-      '<select id="rhmod-item-sel" class="rhmod-sel"></select>' +
-      '<div class="rhmod-row"><input id="rhmod-item-qty" type="number" min="1" value="1" title="数量">' +
-      '<select id="rhmod-item-target" class="rhmod-sel"><option value="inv">背包</option><option value="stash">仓库</option></select></div>' +
-      '<div class="rhmod-row"><input id="rhmod-gear-level" type="number" min="1" max="99" value="1" title="等级" placeholder="等级">' +
-      '<input id="rhmod-gear-enh" type="number" min="0" max="10" value="0" title="强化" placeholder="强化">' +
-      '<input id="rhmod-gear-upg" type="number" min="0" max="30" value="0" title="改造" placeholder="改造">' +
-      '<select id="rhmod-gear-rarity" class="rhmod-sel" title="稀有度">' +
-      '<option value="">默认</option><option value="common">普通</option><option value="uncommon">精良</option>' +
-      '<option value="rare">稀有</option><option value="epic">史诗</option><option value="legendary">传说</option>' +
-      '<option value="artifact">神器</option></select></div>' +
-      '<div class="rhmod-row"><button data-act="itemAdd">➕ 添加物品</button><button data-act="itemAddGear">⚔️ 添加为装备</button></div>' +
-      '</div>' +
-      '<div class="rhmod-note">已内置：战斗后自动领奖 / 楼层自由选择(无需定位器) / 默认最高层<br>解锁楼层：全部解锁 或 解锁到指定楼层（本次启动内有效）<br>📉 还原已解锁楼层：改写真实楼层进度（含自己打上去的），填 0 = 清空该区域进度；游戏自动存档后生效，建议先用存档修改器备份<br>「仅还原MOD解锁」只撤销 MOD 的解锁标志，不动真实进度<br>生态打理：收获/浇水/施肥/宰杀/孵化/放养/喂食/烹饪（自动模式每 15 秒执行一次）<br>按 ' + KEY + ' 打开或关闭面板</div>';
+    panel.innerHTML = buildHtml();
     var css = document.createElement('style');
     css.textContent =
       '#rhmod-panel{position:fixed;top:80px;right:16px;width:300px;z-index:2147483000;background:rgba(10,14,22,.96);' +
@@ -90,12 +91,24 @@
     var titleEl = panel.querySelector('.rhmod-head span');
     function setMini(on) {
       panel.classList.toggle('rhmod-mini', !!on);
-      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.13';
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : t('🔧 RH 内置修改器 ', '🔧 RH Mod Panel ') + VER;
       if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
       try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
     }
     if (miniBtn) miniBtn.onclick = function () { setMini(!panel.classList.contains('rhmod-mini')); };
     try { if (localStorage.getItem('rhmod_mini') === '1') setMini(true); } catch (e) {}
+    // 语言切换：保存偏好 → 销毁并重建面板（即时生效，无需重启游戏）
+    var langBtn = document.getElementById('rhmod-lang');
+    if (langBtn) langBtn.onclick = function () {
+      langEn = !langEn;
+      try { localStorage.setItem('rhmod_lang', langEn ? 'en' : 'zh'); } catch (e) {}
+      var wasHidden = panel.classList.contains('rhmod-hidden');
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+      panel = null;
+      ensure();
+      refreshStatus();
+      if (!wasHidden) panel.classList.remove('rhmod-hidden');
+    };
     Array.prototype.forEach.call(panel.querySelectorAll('button[data-act]'), function (b) {
       b.onclick = function () { run(b.getAttribute('data-act'), b); };
     });
@@ -134,39 +147,7 @@
       });
     }
     statusEl = $('rhmod-status-text');
-    // 添加物品：搜索框过滤 + 初始填充
-    var itemSearch = document.getElementById('rhmod-item-search');
-    if (itemSearch) itemSearch.oninput = function () { fillItemList(itemSearch.value); };
-    fillItemList('');
   }
-
-  // ===== 物品表填充（数据来自游戏内 ITEMS 定义，由 AppContent 注入侧提供） =====
-  function fillItemList(kw) {
-    var sel = document.getElementById('rhmod-item-sel');
-    if (!sel) return;
-    var api = window.__RH_ITEM__;
-    if (!api || !api.ready || !api.ready()) {
-      sel.innerHTML = '<option value="">（进游戏后自动加载物品表…）</option>';
-      return;
-    }
-    var all = api.list();
-    var kws = String(kw || '').trim().toLowerCase();
-    var out = '', n = 0;
-    for (var i = 0; i < all.length; i++) {
-      var it = all[i];
-      if (kws && it.name.toLowerCase().indexOf(kws) < 0 && it.id.toLowerCase().indexOf(kws) < 0) continue;
-      out += '<option value="' + it.id + '">' + it.name + (it.type ? ' · ' + it.type : '') + '  [' + it.id + ']</option>';
-      if (++n >= 400) { out += '<option value="" disabled>…（请用关键词缩小范围）</option>'; break; }
-    }
-    sel.innerHTML = out || '<option value="">（无匹配物品）</option>';
-  }
-  // 物品表就绪后自动补填（游戏模块晚于面板初始化时）
-  setInterval(function () {
-    var sel = document.getElementById('rhmod-item-sel');
-    if (!sel || !sel.options.length) return;
-    var api = window.__RH_ITEM__;
-    if (api && api.ready && api.ready() && sel.options[0].text.indexOf('自动加载') >= 0) fillItemList('');
-  }, 3000);
 
   function toast(msg, ok) {
     if (!toastEl || !toastEl.isConnected) {
@@ -183,7 +164,7 @@
   function refreshStatus() {
     if (!statusEl) return;
     var h = window.__RH_MOD__;
-    statusEl.textContent = h ? '已进入废墟探索（功能可用）' : '未在废墟探索中（进入废墟后功能可用）';
+    statusEl.textContent = h ? t('已进入废墟探索（功能可用）', 'In ruin exploration (features ready)') : t('未在废墟探索中（进入废墟后功能可用）', 'Not in ruin exploration (enter ruins first)');
     refreshAutoWinLabel();
     refreshEcoAutoLabel();
   }
@@ -233,7 +214,7 @@
     if (!btn) return;
     var h = window.__RH_MOD__;
     var on = h ? h.getAutoWin() : false;
-    btn.textContent = on ? '🎯 自动秒杀模式：开' : '🎯 自动秒杀模式：关';
+    btn.textContent = on ? t('🎯 自动秒杀模式：开', '🎯 Auto-win: ON') : t('🎯 自动秒杀模式：关', '🎯 Auto-win: OFF');
     btn.style.background = on ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '';
   }
 
@@ -255,7 +236,7 @@
         act === 'ecoHatch' || act === 'ecoPlace' || act === 'ecoFeed' || act === 'ecoWater' || act === 'ecoFert' ||
         act === 'ecoRipen' || act === 'ecoPlant') {
       var eco = window.__RH_ECO__;
-      if (!eco) { toast('未进入游戏界面（生态设备未就绪），请先进游戏', false); return; }
+      if (!eco) { toast(t('未进入游戏界面（生态设备未就绪），请先进游戏', 'Game UI not ready (eco devices missing); enter the game first'), false); return; }
       try {
         if (act === 'ecoHarvest') eco.harvestAllFarms();
         else if (act === 'ecoPlant') eco.plantAll();
@@ -272,45 +253,22 @@
           var st = window.__RH_ECO__ && window.__RH_ECO__.last;
           function n(k) { return st ? (st[k] || 0) : 0; }
           var h = n('harvest'), s = n('slaughter'), c = n('cook'), ht = n('hatch'), p = n('place'), fd = n('feed'), w = n('water'), f = n('fert'), rp = n('ripen'), pt = n('plant');
-          if (act === 'ecoHarvest') toast(h > 0 ? '已收获 ' + h + ' 株成熟作物' : '没有成熟作物：先点「一键种植」再点「一键催熟」，即可收获', h > 0);
-          else if (act === 'ecoPlant') toast(pt > 0 ? '已用库存种子种下 ' + pt + ' 株作物（接着点「催熟」立即成熟）' : '没有可种的空槽或库存里没有种子（先获取 seed_ 开头种子）', pt > 0);
-          else if (act === 'ecoRipen') toast(rp > 0 ? '已催熟 ' + rp + ' 株作物（立即成熟，点「一键收获」即可收取）' : '没有在生长的作物：先点「一键种植」播种', rp > 0);
-          else if (act === 'ecoSlaughter') toast(s > 0 ? '已宰杀 ' + s + ' 只成熟动物' : '没有可宰杀的成熟动物', s > 0);
-          else if (act === 'ecoCook') toast(c > 0 ? '已烹饪 ' + c + ' 道菜' : (st && st.cook === -1 ? '未安装电炉，无法烹饪' : '食材不足或未解锁菜谱'), c > 0);
-          else if (act === 'ecoHatch') toast(ht > 0 ? '已放入 ' + ht + ' 枚蛋开始孵化' : '没有可孵化的蛋', ht > 0);
-          else if (act === 'ecoPlace') toast(p > 0 ? '已放入 ' + p + ' 只动物' : (st && st.placeMsg ? st.placeMsg : '没有可放入的动物或槽位已满'), p > 0);
-          else if (act === 'ecoFeed') toast(fd > 0 ? '已为 ' + fd + ' 个孵化器补满饲料' : '饲料已满或库存饲料不足', fd > 0);
-          else if (act === 'ecoWater') toast(w > 0 ? '已浇水 ' + w + ' 株作物' : '没有需要浇水的作物', w > 0);
-          else if (act === 'ecoFert') toast(f > 0 ? '已施肥 ' + f + ' 株作物' : '没有需要施肥的作物', f > 0);
+          if (act === 'ecoHarvest') toast(h > 0 ? t('已收获 ' + h + ' 株成熟作物', 'Harvested ' + h + ' mature crops') : t('没有成熟作物：先点「一键种植」再点「一键催熟」，即可收获', 'No mature crops: plant first, then ripen, then harvest'), h > 0);
+          else if (act === 'ecoPlant') toast(pt > 0 ? t('已用库存种子种下 ' + pt + ' 株作物（接着点「催熟」立即成熟）', 'Planted ' + pt + ' crops from stock (then \"Ripen\" to mature instantly)') : t('没有可种的空槽或库存里没有种子（先获取 seed_ 开头种子）', 'No empty slots or no seeds in stock (get seed_ items first)'), pt > 0);
+          else if (act === 'ecoRipen') toast(rp > 0 ? t('已催熟 ' + rp + ' 株作物（立即成熟，点「一键收获」即可收取）', 'Ripened ' + rp + ' crops (harvest them now)') : t('没有在生长的作物：先点「一键种植」播种', 'No growing crops: plant first'), rp > 0);
+          else if (act === 'ecoSlaughter') toast(s > 0 ? t('已宰杀 ' + s + ' 只成熟动物', 'Slaughtered ' + s + ' mature animals') : t('没有可宰杀的成熟动物', 'No mature animals to slaughter'), s > 0);
+          else if (act === 'ecoCook') toast(c > 0 ? t('已烹饪 ' + c + ' 道菜', 'Cooked ' + c + ' dishes') : (st && st.cook === -1 ? t('未安装电炉，无法烹饪', 'No electric stove installed') : t('食材不足或未解锁菜谱', 'Not enough ingredients or recipes locked')), c > 0);
+          else if (act === 'ecoHatch') toast(ht > 0 ? t('已放入 ' + ht + ' 枚蛋开始孵化', 'Placed ' + ht + ' eggs into incubation') : t('没有可孵化的蛋', 'No eggs to hatch'), ht > 0);
+          else if (act === 'ecoPlace') toast(p > 0 ? t('已放入 ' + p + ' 只动物', 'Placed ' + p + ' animals') : (st && st.placeMsg ? st.placeMsg : t('没有可放入的动物或槽位已满', 'No animals to place or slots full')), p > 0);
+          else if (act === 'ecoFeed') toast(fd > 0 ? t('已为 ' + fd + ' 个孵化器补满饲料', 'Refilled feed for ' + fd + ' incubator(s)') : t('饲料已满或库存饲料不足', 'Feed already full or not enough stock'), fd > 0);
+          else if (act === 'ecoWater') toast(w > 0 ? t('已浇水 ' + w + ' 株作物', 'Watered ' + w + ' crops') : t('没有需要浇水的作物', 'No crops need watering'), w > 0);
+          else if (act === 'ecoFert') toast(f > 0 ? t('已施肥 ' + f + ' 株作物', 'Fertilized ' + f + ' crops') : t('没有需要施肥的作物', 'No crops need fertilizer'), f > 0);
           else toast((pt + rp + h + s + c + ht + p + fd + w + f) > 0
-            ? '打理完成：种植 ' + pt + ' 株、催熟 ' + rp + ' 株、收获 ' + h + ' 株、宰杀 ' + s + ' 只、烹饪 ' + c + ' 道、孵化 ' + ht + ' 蛋、放养 ' + p + ' 只、喂食 ' + fd + ' 箱、浇水 ' + w + ' 株、施肥 ' + f + ' 株'
-            : '没有可打理的内容', (pt + rp + h + s + c + ht + p + fd + w + f) > 0);
+            ? t('打理完成：种植 ' + pt + ' 株、催熟 ' + rp + ' 株、收获 ' + h + ' 株、宰杀 ' + s + ' 只、烹饪 ' + c + ' 道、孵化 ' + ht + ' 蛋、放养 ' + p + ' 只、喂食 ' + fd + ' 箱、浇水 ' + w + ' 株、施肥 ' + f + ' 株',
+                'Done: planted ' + pt + ', ripened ' + rp + ', harvested ' + h + ', slaughtered ' + s + ', cooked ' + c + ', hatched ' + ht + ', placed ' + p + ', fed ' + fd + ', watered ' + w + ', fertilized ' + f)
+            : t('没有可打理的内容', 'Nothing to maintain'), (pt + rp + h + s + c + ht + p + fd + w + f) > 0);
         }, 2500);
-      } catch (e) { toast('执行失败：' + e.message, false); }
-      return;
-    }
-    if (act === 'itemAdd' || act === 'itemAddGear') {
-      var item = window.__RH_ITEM__;
-      var sel = document.getElementById('rhmod-item-sel');
-      var defId = sel ? sel.value : '';
-      if (!item || !item.ready || !item.ready()) { toast('物品表未就绪：请先进到游戏主界面（能看到背包）再试', false); return; }
-      if (!defId) { toast('请先在列表里选中一个物品（可用上方搜索框过滤）', false); return; }
-      try {
-        if (act === 'itemAdd') {
-          var qty = parseInt(document.getElementById('rhmod-item-qty').value, 10) || 1;
-          var toStash = (document.getElementById('rhmod-item-target').value === 'stash');
-          var got = item.add(defId, qty, toStash);
-          toast('已添加 ' + defId + ' ×' + got + ' 到' + (toStash ? '仓库' : '背包'), true);
-        } else {
-          var inst = item.addGear(defId, {
-            level: document.getElementById('rhmod-gear-level').value,
-            enhance: document.getElementById('rhmod-gear-enh').value,
-            upgrade: document.getElementById('rhmod-gear-upg').value,
-            rarity: document.getElementById('rhmod-gear-rarity').value || undefined
-          });
-          toast(inst ? ('已添加装备 ' + defId + '（Lv' + inst.level + (inst.enhanceLevel ? '+' + inst.enhanceLevel : '') + ' · ' + inst.rarity + '）到背包') : '添加失败：接口未就绪', !!inst);
-        }
-      } catch (e) { toast('执行失败：' + e.message, false); }
+      } catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
       return;
     }
     if (act === 'ecoAuto') {
@@ -319,33 +277,33 @@
         window.__RH_ECO_AUTO__ = next;
         try { localStorage.setItem('rhmod_eco_auto', next ? '1' : '0'); } catch (e) {}
         refreshEcoAutoLabel();
-        toast(next ? '自动打理已开启（每 15 秒收获/宰杀/烹饪）' : '自动打理已关闭', true);
-      } catch (e) { toast('执行失败：' + e.message, false); }
+        toast(next ? t('自动打理已开启（每 15 秒收获/宰杀/烹饪）', 'Auto-maintain ON (harvest/slaughter/cook every 15s)') : t('自动打理已关闭', 'Auto-maintain OFF'), true);
+      } catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
       return;
     }
-    if (!h) { toast('未在废墟探索中，请先进入废墟', false); return; }
+    if (!h) { toast(t('未在废墟探索中，请先进入废墟', 'Not in ruin exploration; enter the ruins first'), false); return; }
     if (act === 'unlockAll') {
-      try { h.unlockAllFloors(); toast('已解锁全部楼层！（本次启动游戏内有效，重启游戏后恢复原状）', true); }
-      catch (e) { toast('执行失败：' + e.message, false); }
+      try { h.unlockAllFloors(); toast(t('已解锁全部楼层！（本次启动游戏内有效，重启游戏后恢复原状）', 'All floors unlocked! (this session only; resets after restart)'), true); }
+      catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'unlockTo') {
       var inp = document.getElementById('rhmod-unlock-floor');
       var n = parseInt(inp && inp.value, 10);
-      if (!n || n < 1) { toast('请先在输入框里填要解锁到的楼层号（1~999）', false); return; }
-      try { h.unlockToFloor(n); toast('已解锁到第 ' + n + ' 层（本次启动游戏内有效，重启游戏后恢复原状）', true); }
-      catch (e) { toast('执行失败：' + e.message, false); }
+      if (!n || n < 1) { toast(t('请先在输入框里填要解锁到的楼层号（1~999）', 'Enter a floor number first (1-999)'), false); return; }
+      try { h.unlockToFloor(n); toast(t('已解锁到第 ' + n + ' 层（本次启动游戏内有效，重启游戏后恢复原状）', 'Unlocked up to floor ' + n + ' (this session only)'), true); }
+      catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'restoreFloors') {
-      try { h.restoreFloors(); toast('已还原MOD解锁状态（真实楼层进度不受影响）', true); }
-      catch (e) { toast('执行失败：' + e.message, false); }
+      try { h.restoreFloors(); toast(t('已还原MOD解锁状态（真实楼层进度不受影响）', 'MOD unlocks undone (real progress untouched)'), true); }
+      catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'restoreProgress') {
       var inp3 = document.getElementById('rhmod-unlock-floor');
       var n3 = parseInt(inp3 && inp3.value, 10);
-      if (isNaN(n3) || n3 < 0) { toast('请先在输入框里填还原到的楼层号（0 = 清空该区域全部楼层进度）', false); return; }
-      if (!btnEl) { toast('按钮状态异常，请重开面板', false); return; }
+      if (isNaN(n3) || n3 < 0) { toast(t('请先在输入框里填还原到的楼层号（0 = 清空该区域全部楼层进度）', 'Enter a floor number first (0 = clear this zone)'), false); return; }
+      if (!btnEl) { toast(t('按钮状态异常，请重开面板', 'Button state error; reopen the panel'), false); return; }
       var nowTs = Date.now();
       if (!btnEl.__rhArm || nowTs - btnEl.__rhArm > 5000) {
         btnEl.__rhArm = nowTs;
         btnEl.__rhText = btnEl.textContent;
-        btnEl.textContent = '⚠️ 将真实改动存档进度，再点一次确认';
+        btnEl.textContent = t('⚠️ 将真实改动存档进度，再点一次确认', '⚠️ This rewrites real progress - click again to confirm');
         setTimeout(function () { if (btnEl.__rhArm) { btnEl.textContent = btnEl.__rhText; btnEl.__rhArm = 0; } }, 5000);
         return;
       }
@@ -356,28 +314,29 @@
         h.restoreProgressFloor(n3);
         setTimeout(function () {
           var rr = window.__RH_RESTORE_RESULT__;
-          if (!rr) { toast('已提交还原请求，请稍候或重进地图查看', true); return; }
-          if (rr.err) { toast('还原失败：' + rr.err, false); return; }
-          if (!rr.changed) { toast('区域 ' + rr.node + ' 当前进度 ' + rr.old + ' 层，无需还原（只能往低还原）', false); return; }
-          toast('已把区域 ' + rr.node + ' 从 ' + rr.old + ' 层还原到 ' + rr.set + ' 层，并撤除了本局MOD解锁；游戏自动存档后生效', true);
+          if (!rr) { toast(t('已提交还原请求，请稍候或重进地图查看', 'Restore submitted; wait or re-enter the map'), true); return; }
+          if (rr.err) { toast(t('还原失败：', 'Restore failed: ') + rr.err, false); return; }
+          if (!rr.changed) { toast(t('区域 ' + rr.node + ' 当前进度 ' + rr.old + ' 层，无需还原（只能往低还原）', 'Zone ' + rr.node + ' is at floor ' + rr.old + '; nothing to restore (only downward)'), false); return; }
+          toast(t('已把区域 ' + rr.node + ' 从 ' + rr.old + ' 层还原到 ' + rr.set + ' 层，并撤除了本局MOD解锁；游戏自动存档后生效',
+                  'Zone ' + rr.node + ' restored from floor ' + rr.old + ' to ' + rr.set + ', MOD unlocks removed; applies after auto-save'), true);
         }, 900);
-      } catch (e) { toast('执行失败：' + e.message, false); }
+      } catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'jumpTop') {
-      try { h.jumpToTopFloor(); toast('已跳到当前区域最高层', true); }
-      catch (e) { toast('执行失败：' + e.message, false); }
+      try { h.jumpToTopFloor(); toast(t('已跳到当前区域最高层', 'Jumped to the top floor'), true); }
+      catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'instantWin') {
-      try { h.instantWin(); toast('当前战斗已直接胜利！', true); }
-      catch (e) { toast('执行失败：' + e.message, false); }
+      try { h.instantWin(); toast(t('当前战斗已直接胜利！', 'Current battle won!'), true); }
+      catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'autoWin') {
       try {
-        var next = !h.getAutoWin();
-        h.setAutoWin(next);
+        var next2 = !h.getAutoWin();
+        h.setAutoWin(next2);
         refreshAutoWinLabel();
-        toast(next ? '自动秒杀已开启（进入战斗自动胜利）' : '自动秒杀已关闭', true);
-      } catch (e) { toast('执行失败：' + e.message, false); }
+        toast(next2 ? t('自动秒杀已开启（进入战斗自动胜利）', 'Auto-win ON (battles auto-won)') : t('自动秒杀已关闭', 'Auto-win OFF'), true);
+      } catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     } else if (act === 'forceExit') {
-      try { h.forceExit(); toast('已强制撤离当前区域', true); }
-      catch (e) { toast('执行失败：' + e.message, false); }
+      try { h.forceExit(); toast(t('已强制撤离当前区域', 'Forced evacuation triggered'), true); }
+      catch (e) { toast(t('执行失败：', 'Failed: ') + e.message, false); }
     }
     setTimeout(refreshStatus, 300);
   }
@@ -386,7 +345,7 @@
     var btn = document.getElementById('rhmod-ecoauto');
     if (!btn) return;
     var on = !!window.__RH_ECO_AUTO__;
-    btn.textContent = on ? '🤖 自动打理：开' : '🤖 自动打理：关';
+    btn.textContent = on ? t('🤖 自动打理：开', '🤖 Auto-maintain: ON') : t('🤖 自动打理：关', '🤖 Auto-maintain: OFF');
     btn.style.background = on ? 'linear-gradient(135deg,#22c55e,#16a34a)' : '';
   }
 
@@ -442,7 +401,7 @@
     //    target 默认为 document（无 closest 方法）会导致游戏渲染崩溃，这里手动把 target 指向 body。
     try {
       var ev = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true });
-      try { Object.defineProperty(ev, 'target', { value: document.body }); } catch (e2) {}
+      try { Object.defineProperty(ev, 'target', { value: document.body }); } catch (e) {}
       document.dispatchEvent(ev);
     } catch (e) {}
     setTimeout(function () { doReload(attempt + 1); }, 1500);
