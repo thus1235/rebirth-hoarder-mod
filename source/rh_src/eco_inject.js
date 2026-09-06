@@ -7,7 +7,7 @@ __rhEcoModBind9 = (function () {
   try {
     window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
     window.__RH_ECO_LAST__ = window.__RH_ECO_LAST__ || { harvest: 0, slaughter: 0, cook: 0, hatch: 0, place: 0, feed: 0, water: 0, fert: 0, items: {}, err: null };
-    window.__RH_UE__ = typeof K === 'function' ? K : null;
+    window.__RH_UE__ = typeof __RH_FN_SETSTATE__ === 'function' ? __RH_FN_SETSTATE__ : null;
 
     function pushItem(list, defId, qty) {
       for (var i = 0; i < list.length; i++) {
@@ -51,11 +51,11 @@ __rhEcoModBind9 = (function () {
           var yields = [], found = false;
           var next = devs.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'hydroponic_box') return dev;
-            var fs = vl(dev);
+            var fs = __RH_FN_FARMSTATE__(dev);
             var keep = [], got = 0, slots = fs.slots || [];
             for (var i = 0; i < slots.length; i++) {
               var s = slots[i];
-              var rr = (s && s.stage === 'mature') ? k0(s) : null;
+              var rr = (s && s.stage === 'mature') ? __RH_FN_HARVEST__(s) : null;
               if (rr) { got++; yields.push(rr); } else keep.push(s);
             }
             if (!got) return dev;
@@ -94,7 +94,7 @@ __rhEcoModBind9 = (function () {
           var n = 0, found = false;
           var next = (prev.p2.installedDevices || []).map(function (dev) {
             if (!dev || dev.deviceDefId !== 'hydroponic_box') return dev;
-            var fs = vl(dev);
+            var fs = __RH_FN_FARMSTATE__(dev);
             var changed = false;
             var slots = (fs.slots || []).map(function (s) {
               if (s && s.seedDefId && s.stage && s.stage !== 'mature') { n++; changed = true; return Object.assign({}, s, { stage: 'mature', growthProgress: 1 }); }
@@ -130,7 +130,7 @@ __rhEcoModBind9 = (function () {
           var need = {}, planted = [], idx = 0;
           var devs = (prev.p2.installedDevices || []).map(function (d) {
             if (!d || d.deviceDefId !== 'hydroponic_box') return d;
-            var fs = vl(d);
+            var fs = __RH_FN_FARMSTATE__(d);
             var slots = (fs.slots || []).slice();
             var occ = {};
             slots.forEach(function (s) { if (s) occ[s.row + '_' + s.col] = 1; });
@@ -178,9 +178,9 @@ __rhEcoModBind9 = (function () {
           var meat = {}, killed = 0, found = false;
           var next = devs.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'eco_incubator') return dev;
-            var st0 = Vi(dev.incubatorState, dev.level);
+            var st0 = __RH_FN_INCUB__(dev.incubatorState, dev.level);
             var cur = (st0.slots || []).slice();
-            var doomed = cur.filter(function (s) { return s && xr(s).isMature; });
+            var doomed = cur.filter(function (s) { return s && __RH_FN_ANIMALINFO__(s).isMature; });
             var got = 0;
             for (var i = 0; i < doomed.length; i++) {
               var rr = __RH_FN_SLAUGHTER__(cur, doomed[i].id);
@@ -219,7 +219,8 @@ __rhEcoModBind9 = (function () {
           for (var i = 0; i < devs.length; i++) {
             if (devs[i] && devs[i].deviceDefId === 'electric_stove') { stove = devs[i]; break; }
           }
-          if (!stove || typeof R2 !== 'function') { LAST.cook = -1; return prev; }
+          if (typeof __RH_FN_RECIPES__ !== 'function') { LAST.cook = -1; return prev; }
+          if (!stove) { LAST.cook = -1; return prev; }
           var unlocked = prev.p2.chefAdvancedCookingRecipes || [];
           if (!unlocked.length) { LAST.cook = 0; return prev; }
           var recipes = __RH_FN_RECIPES__((stove.level || 0) + 1);
@@ -278,12 +279,12 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof b9 !== 'function' || typeof ef !== 'function') { LAST.hatch = 0; return prev; }
+          if (typeof __RH_FN_HATCH__ !== 'function' || typeof __RH_FN_EGGMAP__ !== 'function') { LAST.hatch = 0; return prev; }
           var day = prev.p2.daysSurvived || 0;
           // 收集库存蛋（ef 有幼崽映射即可，注意蛋 defId 是 chicken_egg/duck_egg，不以 egg_ 开头）
           var eggs = {};
-          (prev.inventory || []).forEach(function (x) { if (x && typeof ef === 'function' && ef(x.defId)) eggs[x.defId] = (eggs[x.defId] || 0) + (x.quantity || 1); });
-          (prev.stash || []).forEach(function (x) { if (x && typeof ef === 'function' && ef(x.defId)) eggs[x.defId] = (eggs[x.defId] || 0) + (x.quantity || 1); });
+          (prev.inventory || []).forEach(function (x) { if (x && typeof __RH_FN_EGGMAP__ === 'function' && __RH_FN_EGGMAP__(x.defId)) eggs[x.defId] = (eggs[x.defId] || 0) + (x.quantity || 1); });
+          (prev.stash || []).forEach(function (x) { if (x && typeof __RH_FN_EGGMAP__ === 'function' && __RH_FN_EGGMAP__(x.defId)) eggs[x.defId] = (eggs[x.defId] || 0) + (x.quantity || 1); });
           var types = Object.keys(eggs);
           if (!types.length) { LAST.hatch = 0; return prev; }
           var remaining = {};
@@ -292,13 +293,13 @@ __rhEcoModBind9 = (function () {
           var MAX_PER_DEV = 24; // 每个孵化器本轮最多放入的蛋数（5 台 = 120 枚，出壳幼崽槽位足够）
           var next = prev.p2.installedDevices.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'eco_incubator') return dev;
-            var st0 = Vi(dev.incubatorState, dev.level);
+            var st0 = __RH_FN_INCUB__(dev.incubatorState, dev.level);
             var cur = st0;
             var placed = 0;
             for (var ti = 0; ti < types.length && placed < MAX_PER_DEV; ti++) {
               var t = types[ti];
               while (remaining[t] > 0 && placed < MAX_PER_DEV) {
-                var r = b9(cur, t, day);
+                var r = __RH_FN_HATCH__(cur, t, day);
                 if (!r) break;
                 cur = r;
                 remaining[t]--;
@@ -346,19 +347,19 @@ __rhEcoModBind9 = (function () {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
           // 【2026-09-06 修复】放入函数在新版为 b9（旧名 y9 已被其它函数占用，调用永远失败）
-          if (typeof b9 !== 'function' || typeof xo === 'undefined') { LAST.place = 0; LAST.placeMsg = '游戏接口未就绪（b9/xo 缺失），请反馈作者'; return prev; }
+          if (typeof __RH_FN_PLACE__ !== 'function' || typeof __RH_FN_ANIMALCFG__ === 'undefined') { LAST.place = 0; LAST.placeMsg = '游戏接口未就绪，请反馈作者'; return prev; }
           // 收集库存动物（xo 有 animalConfig，排除蛋/成熟体——只放可养的）
           var animals = {};
           (prev.inventory || []).forEach(function (x) {
             var d = x && x.defId;
-            if (!d || !xo[d]) return;
-            if (typeof ef === 'function' && ef(d)) return; // 蛋（chicken_egg/duck_egg）不能放入槽位
+            if (!d || !__RH_FN_ANIMALCFG__[d]) return;
+            if (typeof __RH_FN_EGGMAP__ === 'function' && __RH_FN_EGGMAP__(d)) return; // 蛋（chicken_egg/duck_egg）不能放入槽位
             animals[d] = (animals[d] || 0) + (x.quantity || 1);
           });
           (prev.stash || []).forEach(function (x) {
             var d = x && x.defId;
-            if (!d || !xo[d]) return;
-            if (typeof ef === 'function' && ef(d)) return;
+            if (!d || !__RH_FN_ANIMALCFG__[d]) return;
+            if (typeof __RH_FN_EGGMAP__ === 'function' && __RH_FN_EGGMAP__(d)) return;
             animals[d] = (animals[d] || 0) + (x.quantity || 1);
           });
           var types = Object.keys(animals);
@@ -368,7 +369,7 @@ __rhEcoModBind9 = (function () {
           var placed = 0;
           var next = prev.p2.installedDevices.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'eco_incubator') return dev;
-            var st0 = Vi(dev.incubatorState, dev.level);
+            var st0 = __RH_FN_INCUB__(dev.incubatorState, dev.level);
             var slots = (st0.slots || []).slice();
             var gs = st0.gridSize || 6;
             // 找空槽（row-major）
@@ -387,7 +388,7 @@ __rhEcoModBind9 = (function () {
                 if (!cell) break; // 槽满
                 // b9(incubatorState, animalDefId, row, col)：新版放入函数（旧名 y9 已失效）
                 // 必须传入当前进度的 slots，否则每次只保留最后一只
-                var nr = b9(Object.assign({}, st0, { slots: slots }), t, cell.row, cell.col);
+                var nr = __RH_FN_PLACE__(Object.assign({}, st0, { slots: slots }), t, cell.row, cell.col);
                 if (!nr) break;
                 slots = nr;
                 occupied[cell.row + ',' + cell.col] = true;
@@ -435,7 +436,7 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof _4 !== 'function') { LAST.feed = 0; return prev; }
+          if (typeof __RH_FN_ADDFEED__ !== 'function') { LAST.feed = 0; return prev; }
           var feedCount = 0;
           (prev.inventory || []).forEach(function (x) { if (x && x.defId === 'animal_feed') feedCount += (x.quantity || 1); });
           (prev.stash || []).forEach(function (x) { if (x && x.defId === 'animal_feed') feedCount += (x.quantity || 1); });
@@ -443,7 +444,7 @@ __rhEcoModBind9 = (function () {
           var used = 0, fedDevs = 0;
           var next = prev.p2.installedDevices.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'eco_incubator') return dev;
-            var st0 = Vi(dev.incubatorState, dev.level);
+            var st0 = __RH_FN_INCUB__(dev.incubatorState, dev.level);
             var cap = st0.feedCapacity || 100;
             var cur = Math.floor(Number(st0.feedStock) || 0);
             var need = cap - cur;
@@ -455,7 +456,7 @@ __rhEcoModBind9 = (function () {
             used += take;
             fedDevs++;
             return Object.assign({}, dev, {
-              incubatorState: Object.assign({}, st0, { feedStock: _4(cur, take * per, cap) })
+              incubatorState: Object.assign({}, st0, { feedStock: __RH_FN_ADDFEED__(cur, take * per, cap) })
             });
           });
           if (!used) { LAST.feed = 0; return prev; }
@@ -490,7 +491,7 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof by !== 'function') { LAST.water = 0; return prev; }
+          if (typeof __RH_FN_WATER__ !== 'function') { LAST.water = 0; return prev; }
           var bottleCount = 0;
           (prev.inventory || []).forEach(function (x) { if (x && x.defId === 'water_bottle') bottleCount += (x.quantity || 1); });
           (prev.stash || []).forEach(function (x) { if (x && x.defId === 'water_bottle') bottleCount += (x.quantity || 1); });
@@ -498,11 +499,11 @@ __rhEcoModBind9 = (function () {
           var used = 0, watered = 0;
           var next = prev.p2.installedDevices.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'hydroponic_box') return dev;
-            var fs = vl(dev);
+            var fs = __RH_FN_FARMSTATE__(dev);
             var changed = false;
             var slots = (fs.slots || []).map(function (s) {
               if (used >= bottleCount) return s;
-              var nr = (s && !s.watered && (s.stage === 'seedling' || s.stage === 'growing')) ? by(s) : null;
+              var nr = (s && !s.watered && (s.stage === 'seedling' || s.stage === 'growing')) ? __RH_FN_WATER__(s) : null;
               if (nr) { used++; watered++; changed = true; return nr; }
               return s;
             });
@@ -544,7 +545,7 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof Zp !== 'function') { LAST.fert = 0; return prev; }
+          if (typeof __RH_FN_FERT__ !== 'function') { LAST.fert = 0; return prev; }
           var fish = 0, bio = 0;
           (prev.inventory || []).forEach(function (x) {
             if (x && x.defId === 'fish_manure') fish += (x.quantity || 1);
@@ -558,12 +559,12 @@ __rhEcoModBind9 = (function () {
           var usedFish = 0, usedBio = 0, fertilized = 0;
           var next = prev.p2.installedDevices.map(function (dev) {
             if (!dev || dev.deviceDefId !== 'hydroponic_box') return dev;
-            var fs = vl(dev);
+            var fs = __RH_FN_FARMSTATE__(dev);
             var changed = false;
             var slots = (fs.slots || []).map(function (s) {
               if (!s || s.fertilized || s.stage === 'mature' || s.stage === 'withered') return s;
-              if (usedFish < fish) { var nr = Zp(s, 'fish_manure'); if (nr) { usedFish++; fertilized++; changed = true; return nr; } }
-              if (usedBio < bio) { var nr2 = Zp(s, 'bio_compost'); if (nr2) { usedBio++; fertilized++; changed = true; return nr2; } }
+              if (usedFish < fish) { var nr = __RH_FN_FERT__(s, 'fish_manure'); if (nr) { usedFish++; fertilized++; changed = true; return nr; } }
+              if (usedBio < bio) { var nr2 = __RH_FN_FERT__(s, 'bio_compost'); if (nr2) { usedBio++; fertilized++; changed = true; return nr2; } }
               return s;
             });
             if (!changed) return dev;
@@ -600,7 +601,21 @@ __rhEcoModBind9 = (function () {
           });
         });
       },
+      // 一键全部完成：种植 → 催熟 → 收获 → 养殖 → 孵化 → 烹饪（种子会被消耗，故只在手动点按钮时用）
       autoAll: function () {
+        this.plantAll();
+        this.ripenAll();
+        this.harvestAllFarms();
+        this.slaughterAll();
+        this.cookAll();
+        this.hatchAll();
+        this.placeAllAnimals();
+        this.feedAll();
+        this.waterAll();
+        this.fertilizeAll();
+      },
+      // 自动打理（15 秒定时）：不含种植/催熟，避免挂机时把库存种子一次性种光
+      autoMaintain: function () {
         this.harvestAllFarms();
         this.slaughterAll();
         this.cookAll();

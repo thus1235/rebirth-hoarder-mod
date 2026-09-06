@@ -1,6 +1,7 @@
 ﻿# 发布GitHub.ps1 - 把工具库最新内容同步到本地 github_repo 并推送到 GitHub 公开仓库
 # 用法: powershell -NoProfile -ExecutionPolicy Bypass -File 发布GitHub.ps1
-# 依赖: 已克隆的 github_repo（首次运行前先手工 git clone 一次），credential.helper=manager 已配置
+# 依赖: 已克隆的 github_repo（首次运行前先手工 git clone 一次）
+# 凭据: 推送使用 %USERPROFILE%\.git-credentials（store 模式），已彻底禁用 GCM/凭据选择器，全程无弹窗
 $ErrorActionPreference = 'Stop'
 $root = 'D:\桌面\末世房车MOD工具库'
 $gh = "$root\github_repo"
@@ -55,8 +56,7 @@ try {
     $stat = git status --short
     if (-not $stat) {
         Write-Step '没有内容变化，无需提交。'
-        Pop-Location
-        exit 0
+        exit 0   # finally 会负责 Pop-Location
     }
     git add --renormalize . 2>$null   # 规范化换行，避免虚假 diff
     git add -A
@@ -70,8 +70,22 @@ try {
     $msg = "$ver 更新 $date：自动同步工具库内容"
     git commit -m $msg
     Write-Step "已提交：$msg"
-    git push origin main
+    # 无弹窗推送：命令行再次清空凭据 helper 链（屏蔽 GCM/选择器），仅用 %USERPROFILE%\.git-credentials
+    $env:GIT_TERMINAL_PROMPT = '0'
+    $env:GCM_INTERACTIVE = 'never'
+    git -c credential.helper= -c credential.helper=store push origin main
+    if ($LASTEXITCODE -ne 0) { throw "git push 失败 (exit=$LASTEXITCODE)：请检查网络，或 %USERPROFILE%\.git-credentials 中的 GitHub 凭据是否已失效" }
     Write-Step "已推送到 GitHub：$repo"
+    # 推送后校验：远程 main 必须与本地 HEAD 一致
+    $head = git rev-parse HEAD
+    $remoteLine = (git ls-remote origin refs/heads/main) -join ' '
+    $remoteSha = ''
+    if ($remoteLine -match '^([0-9a-f]{40})') { $remoteSha = $Matches[1] }
+    if ($remoteSha -eq $head) {
+        Write-Step ("远程校验通过：origin/main = " + $head.Substring(0, 8))
+    } else {
+        Write-Err ("远程校验未通过：本地=" + $head.Substring(0, 8) + " 远程=" + $remoteSha)
+    }
 } finally {
     Pop-Location
 }

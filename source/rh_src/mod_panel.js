@@ -16,7 +16,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.10</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.12</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -37,7 +37,7 @@
       '<button data-act="ecoPlace">🐣 一键放入全部动物</button>' +
       '<button data-act="ecoFeed">🍖 一键喂食补满饲料</button>' +
       '<button data-act="ecoCook">🍳 一键烹饪全部菜谱</button>' +
-      '<button data-act="ecoAll">✨ 一键全部完成（种植+养殖+孵化+烹饪）</button>' +
+      '<button data-act="ecoAll">✨ 一键全部完成（种植+催熟+收获+养殖+孵化+烹饪）</button>' +
       '<button data-act="ecoAuto" id="rhmod-ecoauto">🤖 自动打理：关</button>' +
       '</div>' +
       '<div class="rhmod-note">已内置：战斗后自动领奖 / 楼层自由选择(无需定位器) / 默认最高层<br>解锁楼层：全部解锁 或 解锁到指定楼层（本次启动内有效）<br>📉 还原已解锁楼层：改写真实楼层进度（含自己打上去的），填 0 = 清空该区域进度；游戏自动存档后生效，建议先用存档修改器备份<br>「仅还原MOD解锁」只撤销 MOD 的解锁标志，不动真实进度<br>生态打理：收获/浇水/施肥/宰杀/孵化/放养/喂食/烹饪（自动模式每 15 秒执行一次）<br>按 ' + KEY + ' 打开或关闭面板</div>';
@@ -73,7 +73,7 @@
     var titleEl = panel.querySelector('.rhmod-head span');
     function setMini(on) {
       panel.classList.toggle('rhmod-mini', !!on);
-      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.10';
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.12';
       if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
       try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
     }
@@ -229,13 +229,13 @@
           else if (act === 'ecoSlaughter') toast(s > 0 ? '已宰杀 ' + s + ' 只成熟动物' : '没有可宰杀的成熟动物', s > 0);
           else if (act === 'ecoCook') toast(c > 0 ? '已烹饪 ' + c + ' 道菜' : (st && st.cook === -1 ? '未安装电炉，无法烹饪' : '食材不足或未解锁菜谱'), c > 0);
           else if (act === 'ecoHatch') toast(ht > 0 ? '已放入 ' + ht + ' 枚蛋开始孵化' : '没有可孵化的蛋', ht > 0);
-          else if (act === 'ecoPlace') toast(p > 0 ? '已放入 ' + p + ' 只动物' : '没有可放入的动物或槽位已满', p > 0);
+          else if (act === 'ecoPlace') toast(p > 0 ? '已放入 ' + p + ' 只动物' : (st && st.placeMsg ? st.placeMsg : '没有可放入的动物或槽位已满'), p > 0);
           else if (act === 'ecoFeed') toast(fd > 0 ? '已为 ' + fd + ' 个孵化器补满饲料' : '饲料已满或库存饲料不足', fd > 0);
           else if (act === 'ecoWater') toast(w > 0 ? '已浇水 ' + w + ' 株作物' : '没有需要浇水的作物', w > 0);
           else if (act === 'ecoFert') toast(f > 0 ? '已施肥 ' + f + ' 株作物' : '没有需要施肥的作物', f > 0);
-          else toast((h + s + c + ht + p + fd + w + f) > 0
-            ? '打理完成：收获 ' + h + ' 株、宰杀 ' + s + ' 只、烹饪 ' + c + ' 道、孵化 ' + ht + ' 蛋、放养 ' + p + ' 只、喂食 ' + fd + ' 箱、浇水 ' + w + ' 株、施肥 ' + f + ' 株'
-            : '没有可打理的内容', (h + s + c + ht + p + fd + w + f) > 0);
+          else toast((pt + rp + h + s + c + ht + p + fd + w + f) > 0
+            ? '打理完成：种植 ' + pt + ' 株、催熟 ' + rp + ' 株、收获 ' + h + ' 株、宰杀 ' + s + ' 只、烹饪 ' + c + ' 道、孵化 ' + ht + ' 蛋、放养 ' + p + ' 只、喂食 ' + fd + ' 箱、浇水 ' + w + ' 株、施肥 ' + f + ' 株'
+            : '没有可打理的内容', (pt + rp + h + s + c + ht + p + fd + w + f) > 0);
         }, 2500);
       } catch (e) { toast('执行失败：' + e.message, false); }
       return;
@@ -325,7 +325,7 @@
     if (!window.__RH_ECO_AUTO__) return;
     var eco = window.__RH_ECO__;
     if (!eco) return;
-    try { eco.autoAll(); } catch (e) {}
+    try { if (typeof eco.autoMaintain === 'function') eco.autoMaintain(); else eco.autoAll(); } catch (e) {}
   }, 15000);
   setInterval(refreshEcoAutoLabel, 2000);
 

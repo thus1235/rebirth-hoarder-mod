@@ -6764,7 +6764,8 @@ __rhEcoModBind9 = (function () {
           for (var i = 0; i < devs.length; i++) {
             if (devs[i] && devs[i].deviceDefId === 'electric_stove') { stove = devs[i]; break; }
           }
-          if (!stove || typeof R2 !== 'function') { LAST.cook = -1; return prev; }
+          if (typeof L2 !== 'function') { LAST.cook = -1; return prev; }
+          if (!stove) { LAST.cook = -1; return prev; }
           var unlocked = prev.p2.chefAdvancedCookingRecipes || [];
           if (!unlocked.length) { LAST.cook = 0; return prev; }
           var recipes = L2((stove.level || 0) + 1);
@@ -6823,7 +6824,7 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof b9 !== 'function' || typeof ef !== 'function') { LAST.hatch = 0; return prev; }
+          if (typeof _9 !== 'function' || typeof ef !== 'function') { LAST.hatch = 0; return prev; }
           var day = prev.p2.daysSurvived || 0;
           // 收集库存蛋（ef 有幼崽映射即可，注意蛋 defId 是 chicken_egg/duck_egg，不以 egg_ 开头）
           var eggs = {};
@@ -6843,7 +6844,7 @@ __rhEcoModBind9 = (function () {
             for (var ti = 0; ti < types.length && placed < MAX_PER_DEV; ti++) {
               var t = types[ti];
               while (remaining[t] > 0 && placed < MAX_PER_DEV) {
-                var r = b9(cur, t, day);
+                var r = _9(cur, t, day);
                 if (!r) break;
                 cur = r;
                 remaining[t]--;
@@ -6891,7 +6892,7 @@ __rhEcoModBind9 = (function () {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
           // 【2026-09-06 修复】放入函数在新版为 b9（旧名 y9 已被其它函数占用，调用永远失败）
-          if (typeof b9 !== 'function' || typeof xo === 'undefined') { LAST.place = 0; LAST.placeMsg = '游戏接口未就绪（b9/xo 缺失），请反馈作者'; return prev; }
+          if (typeof b9 !== 'function' || typeof xo === 'undefined') { LAST.place = 0; LAST.placeMsg = '游戏接口未就绪，请反馈作者'; return prev; }
           // 收集库存动物（xo 有 animalConfig，排除蛋/成熟体——只放可养的）
           var animals = {};
           (prev.inventory || []).forEach(function (x) {
@@ -6980,7 +6981,7 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof _4 !== 'function') { LAST.feed = 0; return prev; }
+          if (typeof M4 !== 'function') { LAST.feed = 0; return prev; }
           var feedCount = 0;
           (prev.inventory || []).forEach(function (x) { if (x && x.defId === 'animal_feed') feedCount += (x.quantity || 1); });
           (prev.stash || []).forEach(function (x) { if (x && x.defId === 'animal_feed') feedCount += (x.quantity || 1); });
@@ -7000,7 +7001,7 @@ __rhEcoModBind9 = (function () {
             used += take;
             fedDevs++;
             return Object.assign({}, dev, {
-              incubatorState: Object.assign({}, st0, { feedStock: _4(cur, take * per, cap) })
+              incubatorState: Object.assign({}, st0, { feedStock: M4(cur, take * per, cap) })
             });
           });
           if (!used) { LAST.feed = 0; return prev; }
@@ -7035,7 +7036,7 @@ __rhEcoModBind9 = (function () {
         setGS(function (prev) {
           window.__RH_PROBE__ = (window.__RH_PROBE__ || 0) + 1;
           if (!prev || !prev.p2) return prev;
-          if (typeof by !== 'function') { LAST.water = 0; return prev; }
+          if (typeof _y !== 'function') { LAST.water = 0; return prev; }
           var bottleCount = 0;
           (prev.inventory || []).forEach(function (x) { if (x && x.defId === 'water_bottle') bottleCount += (x.quantity || 1); });
           (prev.stash || []).forEach(function (x) { if (x && x.defId === 'water_bottle') bottleCount += (x.quantity || 1); });
@@ -7047,7 +7048,7 @@ __rhEcoModBind9 = (function () {
             var changed = false;
             var slots = (fs.slots || []).map(function (s) {
               if (used >= bottleCount) return s;
-              var nr = (s && !s.watered && (s.stage === 'seedling' || s.stage === 'growing')) ? by(s) : null;
+              var nr = (s && !s.watered && (s.stage === 'seedling' || s.stage === 'growing')) ? _y(s) : null;
               if (nr) { used++; watered++; changed = true; return nr; }
               return s;
             });
@@ -7145,7 +7146,21 @@ __rhEcoModBind9 = (function () {
           });
         });
       },
+      // 一键全部完成：种植 → 催熟 → 收获 → 养殖 → 孵化 → 烹饪（种子会被消耗，故只在手动点按钮时用）
       autoAll: function () {
+        this.plantAll();
+        this.ripenAll();
+        this.harvestAllFarms();
+        this.slaughterAll();
+        this.cookAll();
+        this.hatchAll();
+        this.placeAllAnimals();
+        this.feedAll();
+        this.waterAll();
+        this.fertilizeAll();
+      },
+      // 自动打理（15 秒定时）：不含种植/催熟，避免挂机时把库存种子一次性种光
+      autoMaintain: function () {
         this.harvestAllFarms();
         this.slaughterAll();
         this.cookAll();
