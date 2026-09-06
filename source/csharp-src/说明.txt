@@ -9,7 +9,10 @@
 【文件清单】
   save_editor.cs        主窗体（标签页、读取/写入存档、校验和重建）
   save_editor_extra.cs  分页类（角色属性/装备/卡牌/命途/医疗舱、主题配色）
+  save_editor_add.cs    「添加物品」页（搜索引擎式物品/装备选择器）
+  lang.cs               双语模块（简体中文/English 切换、控件树翻译、消息模板）
   game_names.cs         游戏物品/路线/技能 中文名映射表
+  item_table.cs         物品定义表（构建期从游戏本体自动生成，勿手改）
   test_main.cs          CLI 自检模式（check/compact/names/probe 等）
   编译.bat              一键编译脚本
 
@@ -17,7 +20,7 @@
   1. Windows 系统自带 .NET Framework 4.x 即可，无需安装 VS。
   2. 双击「编译.bat」，会在同目录生成「存档修改器.exe」。
   3. 或手动运行：
-     C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /codepage:65001 /target:winexe /out:存档修改器.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Numerics.dll save_editor.cs save_editor_extra.cs game_names.cs
+     C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /codepage:65001 /target:winexe /out:存档修改器.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Numerics.dll save_editor.cs save_editor_extra.cs save_editor_add.cs lang.cs game_names.cs item_table.cs
 
 【重要提醒】
   - 修改器只改本地存档；Steam 版用户请先关闭 Steam 云同步（见使用说明），
