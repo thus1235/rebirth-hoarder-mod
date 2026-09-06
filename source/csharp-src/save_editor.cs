@@ -786,7 +786,7 @@ namespace RhSaveTrainer
             bar2.Controls.Add(_saveBtn, 4, 0);
 
             Button langBtn = new Button();
-            langBtn.Text = "🌐 Language / 语言";
+            langBtn.Text = "🌐 → English";
             langBtn.Width = 150;
             langBtn.Anchor = AnchorStyles.Left;
             langBtn.Click += delegate(object s, EventArgs e) { Lang.ToggleAndRestart(); };
@@ -1001,7 +1001,7 @@ namespace RhSaveTrainer
             right.Controls.Add(_invScope);
             y += 34;
             Label ql = new Label();
-            ql.Text = "数量 quantity:";
+            ql.Text = "数量:";
             ql.Location = new Point(10, y);
             ql.AutoSize = true;
             right.Controls.Add(ql);
@@ -1167,26 +1167,26 @@ namespace RhSaveTrainer
                 object pv;
                 Dictionary<string, object> payload = null;
                 if (_env.TryGetValue("payload", out pv)) payload = pv as Dictionary<string, object>;
-                if (payload == null) throw new Exception("存档缺少 payload");
+                if (payload == null) throw new Exception("存档缺少数据主体");
                 string calc = SaveCodec.CreateChecksum(payload);
                 object cv;
                 if (_env.TryGetValue("checksum", out cv) && cv is string && (string)cv != calc)
-                    SetStatus("警告：现有 checksum 不匹配（存档可能已被修改过）");
+                    SetStatus("警告：现有校验和不匹配（存档可能已被修改过）");
                 _payload = (Dictionary<string, object>)Json.Clone(payload);
                 Populate();
                 object rv;
                 string rev = _env.TryGetValue("revision", out rv) ? Convert.ToString(rv, CultureInfo.InvariantCulture) : "?";
                 MarkClean();
-                LogWrite("读取存档 slot=" + Slots[_slotBox.SelectedIndex] + " revision=" + rev);
-                SetStatus("已读取（" + Lang.SlotDisplay(Slots[_slotBox.SelectedIndex]) + "） revision=" + rev);
+                LogWrite("读取存档 槽位=" + Slots[_slotBox.SelectedIndex] + " 版本号=" + rev);
+                SetStatus("已读取（" + Lang.SlotDisplay(Slots[_slotBox.SelectedIndex]) + "） 版本号=" + rev);
                 // 防护：游戏运行/保存中可能读到被临时替换的异常档（revision 为 0/1 空档）。
                 // 注意：正常档即使新轮回/新档 revision 也可能只有几十，阈值必须低，只拦 revision<2。
                 object revObj;
                 double revNum = _env.TryGetValue("revision", out revObj) && revObj is double ? (double)revObj : 0;
                 if (revNum < 2)
                 {
-                    SetStatus("警告：存档 revision=" + rev + " 异常！可能游戏正在运行或读取到错误文件，修改将被阻止。");
-                    LogWrite("警告：读取到异常 revision=" + rev);
+                    SetStatus("警告：存档版本号=" + rev + " 异常！可能游戏正在运行或读取到错误文件，修改将被阻止。");
+                    LogWrite("警告：读取到异常版本号=" + rev);
                 }
             }
             catch (Exception ex)
@@ -1435,7 +1435,7 @@ namespace RhSaveTrainer
                     {
                         object lv, en;
                         gearPart = " [" + Lang.L("装备")
-                            + (item.TryGetValue("level", out lv) ? " Lv" + NumDisplay(lv) : "")
+                            + (item.TryGetValue("level", out lv) ? (Lang.En ? " Lv" + NumDisplay(lv) : " " + NumDisplay(lv) + "级") : "")
                             + (item.TryGetValue("enhanceLevel", out en) ? " +" + NumDisplay(en) : "")
                             + (item.ContainsKey("rarity") ? " " + RarityName(Convert.ToString(item["rarity"])) : "")
                             + "]";
@@ -1521,8 +1521,8 @@ namespace RhSaveTrainer
             double revNum = _env.TryGetValue("revision", out revGuard) && revGuard is double ? (double)revGuard : 0;
             if (revNum < 2)
             {
-                LogWrite("阻止写入：revision 异常 " + revNum);
-                Msg("存档 revision 异常（" + revNum + "），可能是游戏正在运行或读取到了错误文件。\n\n已取消写入。请完全关闭游戏后重新打开修改器读取存档（状态栏 revision 应为几百以上的大数）。",
+                LogWrite("阻止写入：版本号异常 " + revNum);
+                Msg("存档版本号异常（" + revNum + "），可能是游戏正在运行或读取到了错误文件。\n\n已取消写入。请完全关闭游戏后重新打开修改器读取存档（状态栏版本号应为几百以上的大数）。",
                     "写入已取消", MessageBoxIcon.Warning);
                 return;
             }
@@ -1637,8 +1637,8 @@ namespace RhSaveTrainer
                 long diskRev = SaveCodec.ReadRevision(path);
                 if (diskRev > curRev)
                 {
-                    LogWrite("阻止写入：磁盘 revision " + diskRev + " > 读入 revision " + curRev + "（游戏可能已重新保存）");
-                    Msg("检测到存档在读取之后被游戏更新过（磁盘 revision " + diskRev + " > 当前 " + curRev + "）。\n\n为防覆盖游戏最新进度，已取消写入。\n请重新读取存档后再修改。",
+                    LogWrite("阻止写入：磁盘版本号 " + diskRev + " > 读入版本号 " + curRev + "（游戏可能已重新保存）");
+                    Msg("检测到存档在读取之后被游戏更新过（磁盘版本号 " + diskRev + " > 当前 " + curRev + "）。\n\n为防覆盖游戏最新进度，已取消写入。\n请重新读取存档后再修改。",
                         "写入已取消", MessageBoxIcon.Warning);
                     return;
                 }
@@ -1708,9 +1708,9 @@ namespace RhSaveTrainer
                 }
                 catch { }
                 MarkClean();
-                LogWrite("写入成功 slot=" + Slots[_slotBox.SelectedIndex] + " revision=" + env["revision"] + " | " + sum.Trim());
-                SetStatus("已写入 ✓ revision=" + env["revision"]);
-                Msg("修改已写入:\n" + path + "\n\nrevision 已 +1，checksum 已重新计算，修改前存档已自动备份。\n启动游戏即可生效（请保持游戏关闭状态）。", "写入成功", MessageBoxIcon.Information);
+                LogWrite("写入成功 槽位=" + Slots[_slotBox.SelectedIndex] + " 版本号=" + env["revision"] + " | " + sum.Trim());
+                SetStatus("已写入 ✓ 版本号=" + env["revision"]);
+                Msg("修改已写入:\n" + path + "\n\n版本号已 +1，校验和已重新计算，修改前存档已自动备份。\n启动游戏即可生效（请保持游戏关闭状态）。", "写入成功", MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {

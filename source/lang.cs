@@ -65,12 +65,11 @@ namespace RhSaveTrainer
             string outS = s;
             string[,] rules = {
                 { "已读取（", "Loaded (" },
-                { "存档 revision 异常（", "Save revision error (" },
+                { "存档版本号异常（", "Save revision error (" },
                 { "未找到存档: ", "Save not found: " },
-                { "已写入 ✓ revision=", "Written ✓ revision=" },
                 { "已写入自动重载标记", "Auto-reload marker written" },
-                { "阻止写入：revision 异常 ", "Write blocked: revision error " },
-                { "阻止写入：磁盘 revision ", "Write blocked: disk revision " },
+                { "阻止写入：版本号异常 ", "Write blocked: revision error " },
+                { "阻止写入：磁盘版本号 ", "Write blocked: disk revision " },
                 { "当前存档没有 P2 战斗数据，不能修改该字段: ", "No P2 combat data; cannot edit: " },
                 { "当前存档没有 P2 数据，不能修改该字段: ", "No P2 data; cannot edit: " },
                 { "当前存档没有进行中的局，不能修改: ", "No active run; cannot edit: " },
@@ -81,14 +80,14 @@ namespace RhSaveTrainer
                 { "需要数字: ", "number required: " },
                 { "，得到: ", ", got: " },
                 { "标记写入失败: ", "Marker write failed: " },
-                { "存档缺少 payload", "Save missing payload" },
+                { "存档缺少数据主体", "Save missing payload" },
                 { "存档含有非有限数字", "Save contains non-finite numbers" },
-                { "警告：读取到异常 revision=", "Warning: abnormal revision=" },
+                { "警告：读取到异常版本号=", "Warning: abnormal revision=" },
                 { " 数量 = ", " quantity = " },
                 { "LAYOUTCHECK 发现 ", "LAYOUTCHECK found " },
                 { " 处重叠:", " overlap(s):" },
                 { "，可能是游戏正在运行或读取到了错误文件。", ", possibly because the game is running or the file is corrupt." },
-                { "） revision", ") revision" },
+                { "） 版本号", ") revision" },
                 { "就绪。请先关闭游戏再修改存档。", "Ready. Please close the game before editing saves." },
                 { "已备份 ", "Backed up " },
                 { " 个文件 -> ", " file(s) -> " },
@@ -105,12 +104,13 @@ namespace RhSaveTrainer
                 { "（仓库）", " (stash)" },
                 { "（装备，背包）", " (gear, inventory)" },
                 { "，记得点“写入修改”", ", click \"Write Changes\"" },
-                { "写入成功 slot=", "Written slot=" },
+                { "写入成功 槽位=", "Written slot=" },
+                { "已写入 ✓ 版本号=", "Written ✓ revision=" },
                 { "写入成功", "Written" },
                 { "写入失败: ", "Write failed: " },
                 { "读取失败: ", "Load failed: " },
                 { "备份失败:\n", "Backup failed:\n" },
-                { "读取存档 slot=", "Loaded slot=" },
+                { "读取存档 槽位=", "Loaded slot=" },
                 { "存档文件不存在:\n", "Save file not found:\n" },
                 { "存档目录不存在:\n", "Save directory not found:\n" },
                 { "请先读取存档", "Load a save first" },
@@ -127,6 +127,9 @@ namespace RhSaveTrainer
                 { "已将全部卡牌各稀有度设为 ", "Set all cards every rarity to " },
                 { "已将全部卡牌金色设为 ", "Set all cards gold to " },
                 { "等级联动: 经验不足，已自动设为 ", "Level synced: not enough exp, auto-set to " },
+                { "（支撑等级 ", " (supports Lv." },
+                { "版本号已 +1，校验和已重新计算，修改前存档已自动备份。", "revision +1, checksum recalculated; a backup was made before writing." },
+                { "启动游戏即可生效（请保持游戏关闭状态）。", "Launch the game to take effect (keep the game closed)." },
                 { "槽位：未装备", "Slot: unequipped" },
                 { "槽位：", "Slot: " },
                 { "词缀名：", "Affix: " }
@@ -211,7 +214,7 @@ namespace RhSaveTrainer
             Add("显示：", "Show:");
             Add("背包 inventory", "Inventory");
             Add("仓库 stash", "Stash");
-            Add("数量 quantity:", "Quantity:");
+            Add("数量:", "Quantity:");
             Add("应用到选中物品", "Apply to selected");
             Add("全部设为 99", "Set all to 99");
             Add("全部设为 999", "Set all to 999");
@@ -358,13 +361,13 @@ namespace RhSaveTrainer
             Add("检测到游戏正在运行。\n\n", "The game is running.\n\n");
             Add("若你在战斗/剧情中，会自动中断回主菜单再继续，属正常现象。\n\n", "If you are in combat/story it will return to the main menu and resume - this is normal.\n\n");
             Add("确定继续写入吗？", "Continue writing?");
-            Add("警告：现有 checksum 不匹配（存档可能已被修改过）", "Warning: checksum mismatch (save may have been modified)");
-            Add("警告：存档 revision=", "Warning: save revision=");
-            Add("检测到存档在读取之后被游戏更新过（磁盘 revision ", "The save changed on disk after it was loaded (disk revision ");
+            Add("警告：现有校验和不匹配（存档可能已被修改过）", "Warning: checksum mismatch (save may have been modified)");
+            Add("警告：存档版本号=", "Warning: save revision=");
+            Add("检测到存档在读取之后被游戏更新过（磁盘版本号 ", "The save changed on disk after it was loaded (disk revision ");
             Add("）。\n\n为防覆盖游戏最新进度，已取消写入。\n请重新读取存档后再修改。", ").\n\nWrite cancelled to avoid overwriting newer progress.\nPlease reload the save and edit again.");
             Add("）。超过会被游戏重置，建议四项额外加成合计 ≤ ", "). Higher values get reset by the game; keep the four bonus totals ≤ ");
             Add("点，或调高等级。", " points, or raise the level.");
-            Add("（支撑 Lv.", "(supports Lv.");
+            Add("（支撑等级 ", "(supports Lv.");
             Add("（游戏可能已重新保存）", " (the game may have re-saved)");
             Add("异常！可能游戏正在运行或读取到错误文件，修改将被阻止。", "! The game may be running or the file is corrupt; editing is blocked.");
             Add("（游戏正在运行）", "(game running)");
@@ -406,7 +409,7 @@ namespace RhSaveTrainer
             Add("（无匹配物品）", "(no matching items)");
             Add("（未读取存档）", "(save not loaded)");
             Add("（无匹配物品，换个关键词试试）", "(no match, try another keyword)");
-            Add("🌐 Language / 语言", "🌐 Language / 语言");
+            Add("🌐 → English", "🌐 → 中文");
             Add("结束", "End");
         }
 

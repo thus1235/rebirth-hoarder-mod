@@ -808,7 +808,7 @@ namespace RhSaveTrainer
                     int maxSingle = 5 + cap;
                     _charTip.Text = Lang.En
                         ? "Current Lv" + lv + ": each of STR/AGI/CON/PER starts at 5; total extra bonuses capped at " + cap + " (max " + maxSingle + " each). Higher values get reset by the game; keep the four bonus totals \u2264 " + cap + " points, or raise the level."
-                        : "当前 Lv" + lv + "：力量/敏捷/体质/感知 每项基础 5 点，四项额外加成加起来最多 " + cap + " 点（单项最高 " + maxSingle + "）。超过会被游戏重置，建议四项额外加成合计 ≤ " + cap + " 点，或调高等级。";
+                        : "当前等级 " + lv + "：力量/敏捷/体质/感知 每项基础 5 点，四项额外加成加起来最多 " + cap + " 点（单项最高 " + maxSingle + "）。超过会被游戏重置，建议四项额外加成合计 ≤ " + cap + " 点，或调高等级。";
                 }
                 Put(_medEntries, "awakeningStage", p2.TryGetValue("awakeningStage", out v) ? v : null);
                 Put(_medEntries, "awakeningExpMultiplier", p2.TryGetValue("awakeningExpMultiplier", out v) ? v : null);
@@ -1184,7 +1184,7 @@ namespace RhSaveTrainer
                     if (_charEntries.TryGetValue("playerExp", out tb))
                     {
                         tb.Text = NumDisplay(need);
-                        LogWrite("等级联动: 经验不足，已自动设为 " + NumDisplay(need) + "（支撑 Lv." + NumDisplay(lv) + "）");
+                        LogWrite("等级联动: 经验不足，已自动设为 " + NumDisplay(need) + "（支撑等级 " + NumDisplay(lv) + "）");
                     }
                 }
             }
