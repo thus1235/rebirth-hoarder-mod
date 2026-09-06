@@ -52,6 +52,7 @@ const WANT = [
   ['addFeed', '__RH_FN_ADDFEED__'],
   ['applyWater', '__RH_FN_WATER__'],
   ['applyFertilizer', '__RH_FN_FERT__'],
+  ['ITEMS', '__RH_ITEMS__'],
 ];
 const sym = {};
 for (const [key, ph] of WANT) {

@@ -53,6 +53,12 @@ function T4(list, id) {
 function L2(level) {
   return [{ id: 'r1', powerCost: 0, ingredients: [{ itemId: 'veg', count: 2 }], outputId: 'dish1' }];
 }
+// 物品定义表（游戏内语义键 ITEMS）
+const ITEMS = {
+  medkit: { name: '战地医疗包', type: 'consumable', rarity: 'common' },
+  gatling_gun: { name: '加特林机枪', type: 'weapon', rarity: 'legendary' },
+  water_bottle: { name: '纯净水', type: 'consumable', rarity: 'common' },
+};
 
 // 旧版错误实现（v3.15）的语义：用于反证——SIM_OLD=1 时把三个函数换回错误的映射
 function _4(t) { if (t && t.intervalId !== null) { /* clearInterval */ } return undefined; } // 实为清定时器，无返回值
@@ -66,7 +72,7 @@ const MAP = {
   __RH_FN_SETSTATE__: 'K', __RH_FN_FARMSTATE__: 'vl', __RH_FN_HARVEST__: 'k0', __RH_FN_INCUB__: 'Vi',
   __RH_FN_ANIMALINFO__: 'xr', __RH_FN_PLACE__: 'b9', __RH_FN_ADDFEED__: 'M4', __RH_FN_WATER__: '_y',
   __RH_FN_FERT__: 'Zp', __RH_FN_HATCH__: '_9', __RH_FN_EGGMAP__: 'ef', __RH_FN_ANIMALCFG__: 'xo',
-  __RH_FN_SLAUGHTER__: 'T4', __RH_FN_RECIPES__: 'L2',
+  __RH_FN_SLAUGHTER__: 'T4', __RH_FN_RECIPES__: 'L2', __RH_ITEMS__: 'ITEMS',
 };
 // SIM_OLD=1：复现 v3.15 的错误映射（孵化误用放入函数 / 喂食误用清定时器 / 浇水误用广告查询）
 if (process.env.SIM_OLD === '1') {
@@ -80,8 +86,8 @@ for (const k of Object.keys(MAP)) code = code.split(k).join(MAP[k]);
 if (code.indexOf('__RH_FN_') >= 0) { console.error('占位符未完全替换'); process.exit(1); }
 
 const windowMock = {};
-const fnNames = ['K', 'vl', 'k0', 'Vi', 'xr', 'b9', 'M4', '_y', 'Zp', '_9', 'ef', 'xo', 'T4', 'L2', '_4', 'by'];
-const fnVals = [K, vl, k0, Vi, xr, b9, M4, _y, Zp, _9, ef, xo, T4, L2, _4, by];
+const fnNames = ['K', 'vl', 'k0', 'Vi', 'xr', 'b9', 'M4', '_y', 'Zp', '_9', 'ef', 'xo', 'T4', 'L2', '_4', 'by', 'ITEMS'];
+const fnVals = [K, vl, k0, Vi, xr, b9, M4, _y, Zp, _9, ef, xo, T4, L2, _4, by, ITEMS];
 new Function('window', ...fnNames, code)(windowMock, ...fnVals);
 const ECO = windowMock.__RH_ECO__;
 if (!ECO) { console.error('注入失败：__RH_ECO__ 未创建，错误=' + windowMock.__RH_DIAG_ERR__); process.exit(1); }
@@ -185,6 +191,33 @@ reset([farm([{ id: 'm1', seedDefId: 'seed_veg', row: 0, col: 0, stage: 'mature' 
       [{ defId: 'seed_veg', quantity: 2 }, { defId: 'water_bottle', quantity: 1 }]);
 try { ECO.autoAll(); check('autoAll 执行无异常', true); }
 catch (e) { check('autoAll 执行无异常', false, e.message); }
+
+console.log('=== 12. 添加任意物品（★新增功能） ===');
+const ITEM = windowMock.__RH_ITEM__;
+check('物品表就绪', !!(ITEM && ITEM.ready && ITEM.ready()));
+const lst = ITEM ? ITEM.list() : [];
+check('物品表含 medkit 且中文名正确', lst.some(x => x.id === 'medkit' && x.name === '战地医疗包'),
+  JSON.stringify(lst.find(x => x.id === 'medkit')));
+reset([]);
+var got = ITEM ? ITEM.add('medkit', 5, false) : 0;
+check('背包添加 medkit×5', cnt(state.inventory, 'medkit') === 5, 'medkit=' + cnt(state.inventory, 'medkit'));
+ITEM && ITEM.add('water_bottle', 3, true);
+check('仓库添加 water_bottle×3', cnt(state.stash, 'water_bottle') === 3);
+ITEM && ITEM.add('medkit', 2, false);
+check('同物品再次添加合并堆叠', state.inventory.filter(x => x.defId === 'medkit').length === 1 && cnt(state.inventory, 'medkit') === 7);
+
+console.log('=== 13. 添加装备（★新增功能） ===');
+reset([]);
+var inst = ITEM ? ITEM.addGear('gatling_gun', { level: 10, enhance: 5, upgrade: 3, rarity: 'artifact' }) : null;
+var g = (state.inventory || [])[0];
+check('addGear 返回实例', !!inst);
+check('背包里出现装备条目', !!g && g.defId === 'gatling_gun');
+check('等级=10', g && g.level === 10);
+check('强化=5 改造=3', g && g.enhanceLevel === 5 && g.upgradeLevel === 3);
+check('稀有度=artifact 且带神器来源', g && g.rarity === 'artifact' && g.artifactSourceBaseId === 'gatling_gun');
+check('instanceId 为 rhgear_ 前缀且唯一', g && /^rhgear_/.test(g.instanceId));
+check('statScale 在合理区间(0.5~3)', g && g.statScale >= 0.5 && g.statScale <= 3, 'statScale=' + (g && g.statScale));
+check('默认词缀为空数组、耐久 9999', g && Array.isArray(g.affixes) && g.durability === 9999);
 
 console.log('\n结果：通过 ' + pass + ' 项，失败 ' + fail + ' 项');
 process.exit(fail ? 1 : 0);

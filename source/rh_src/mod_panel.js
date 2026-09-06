@@ -16,7 +16,7 @@
     panel.id = 'rhmod-panel';
     panel.className = 'rhmod-hidden'; // 初始隐藏，第一次按 F8 打开
     panel.innerHTML =
-      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.12</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
+      '<div class="rhmod-head"><span>🔧 RH 内置修改器 v1.13</span><button id="rhmod-mini">─</button><button id="rhmod-x">✕</button></div>' +
       '<div class="rhmod-status">状态：<span id="rhmod-status-text">检测中…</span></div>' +
       '<div class="rhmod-btns">' +
       '<button data-act="instantWin">⚡ 当前战斗直接胜利</button>' +
@@ -39,6 +39,19 @@
       '<button data-act="ecoCook">🍳 一键烹饪全部菜谱</button>' +
       '<button data-act="ecoAll">✨ 一键全部完成（种植+催熟+收获+养殖+孵化+烹饪）</button>' +
       '<button data-act="ecoAuto" id="rhmod-ecoauto">🤖 自动打理：关</button>' +
+      '<div class="rhmod-sep">🎁 添加物品 / 装备</div>' +
+      '<div class="rhmod-row"><input id="rhmod-item-search" placeholder="搜索物品名或ID…"></div>' +
+      '<select id="rhmod-item-sel" class="rhmod-sel"></select>' +
+      '<div class="rhmod-row"><input id="rhmod-item-qty" type="number" min="1" value="1" title="数量">' +
+      '<select id="rhmod-item-target" class="rhmod-sel"><option value="inv">背包</option><option value="stash">仓库</option></select></div>' +
+      '<div class="rhmod-row"><input id="rhmod-gear-level" type="number" min="1" max="99" value="1" title="等级" placeholder="等级">' +
+      '<input id="rhmod-gear-enh" type="number" min="0" max="10" value="0" title="强化" placeholder="强化">' +
+      '<input id="rhmod-gear-upg" type="number" min="0" max="30" value="0" title="改造" placeholder="改造">' +
+      '<select id="rhmod-gear-rarity" class="rhmod-sel" title="稀有度">' +
+      '<option value="">默认</option><option value="common">普通</option><option value="uncommon">精良</option>' +
+      '<option value="rare">稀有</option><option value="epic">史诗</option><option value="legendary">传说</option>' +
+      '<option value="artifact">神器</option></select></div>' +
+      '<div class="rhmod-row"><button data-act="itemAdd">➕ 添加物品</button><button data-act="itemAddGear">⚔️ 添加为装备</button></div>' +
       '</div>' +
       '<div class="rhmod-note">已内置：战斗后自动领奖 / 楼层自由选择(无需定位器) / 默认最高层<br>解锁楼层：全部解锁 或 解锁到指定楼层（本次启动内有效）<br>📉 还原已解锁楼层：改写真实楼层进度（含自己打上去的），填 0 = 清空该区域进度；游戏自动存档后生效，建议先用存档修改器备份<br>「仅还原MOD解锁」只撤销 MOD 的解锁标志，不动真实进度<br>生态打理：收获/浇水/施肥/宰杀/孵化/放养/喂食/烹饪（自动模式每 15 秒执行一次）<br>按 ' + KEY + ' 打开或关闭面板</div>';
     var css = document.createElement('style');
@@ -60,6 +73,9 @@
       '#rhmod-panel.rhmod-mini .rhmod-status,#rhmod-panel.rhmod-mini .rhmod-btns,#rhmod-panel.rhmod-mini .rhmod-note{display:none}' +
       '#rhmod-panel .rhmod-btns button:hover{filter:brightness(1.12)}' +
       '#rhmod-panel .rhmod-note{margin-top:10px;font-size:11px;color:#64748b;line-height:1.6}' +
+      '#rhmod-panel .rhmod-sep{margin-top:10px;padding-top:8px;border-top:1px solid rgba(120,160,255,.25);font-size:12px;font-weight:700;color:#93c5fd}' +
+      '#rhmod-panel .rhmod-sel{background:#0b1220;border:1px solid rgba(120,160,255,.4);border-radius:8px;color:#e2e8f0;padding:8px 6px;font-size:12px;outline:none;width:100%}' +
+      '#rhmod-panel .rhmod-row input[type=number]{max-width:70px;flex:0 0 auto}' +
       '#rhmod-panel.rhmod-hidden{display:none}' +
       '#rhmod-toast{position:fixed;top:120px;left:50%;transform:translateX(-50%);z-index:2147483001;background:rgba(15,23,42,.96);' +
       'border:1px solid rgba(120,160,255,.4);border-radius:10px;padding:10px 18px;color:#e2e8f0;font-size:13px;' +
@@ -73,7 +89,7 @@
     var titleEl = panel.querySelector('.rhmod-head span');
     function setMini(on) {
       panel.classList.toggle('rhmod-mini', !!on);
-      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.12';
+      if (titleEl) titleEl.textContent = on ? '🔧 RH' : '🔧 RH 内置修改器 v1.13';
       if (miniBtn) miniBtn.textContent = on ? '▣' : '─';
       try { localStorage.setItem('rhmod_mini', on ? '1' : '0'); } catch (e) {}
     }
@@ -117,7 +133,39 @@
       });
     }
     statusEl = $('rhmod-status-text');
+    // 添加物品：搜索框过滤 + 初始填充
+    var itemSearch = document.getElementById('rhmod-item-search');
+    if (itemSearch) itemSearch.oninput = function () { fillItemList(itemSearch.value); };
+    fillItemList('');
   }
+
+  // ===== 物品表填充（数据来自游戏内 ITEMS 定义，由 AppContent 注入侧提供） =====
+  function fillItemList(kw) {
+    var sel = document.getElementById('rhmod-item-sel');
+    if (!sel) return;
+    var api = window.__RH_ITEM__;
+    if (!api || !api.ready || !api.ready()) {
+      sel.innerHTML = '<option value="">（进游戏后自动加载物品表…）</option>';
+      return;
+    }
+    var all = api.list();
+    var kws = String(kw || '').trim().toLowerCase();
+    var out = '', n = 0;
+    for (var i = 0; i < all.length; i++) {
+      var it = all[i];
+      if (kws && it.name.toLowerCase().indexOf(kws) < 0 && it.id.toLowerCase().indexOf(kws) < 0) continue;
+      out += '<option value="' + it.id + '">' + it.name + (it.type ? ' · ' + it.type : '') + '  [' + it.id + ']</option>';
+      if (++n >= 400) { out += '<option value="" disabled>…（请用关键词缩小范围）</option>'; break; }
+    }
+    sel.innerHTML = out || '<option value="">（无匹配物品）</option>';
+  }
+  // 物品表就绪后自动补填（游戏模块晚于面板初始化时）
+  setInterval(function () {
+    var sel = document.getElementById('rhmod-item-sel');
+    if (!sel || !sel.options.length) return;
+    var api = window.__RH_ITEM__;
+    if (api && api.ready && api.ready() && sel.options[0].text.indexOf('自动加载') >= 0) fillItemList('');
+  }, 3000);
 
   function toast(msg, ok) {
     if (!toastEl || !toastEl.isConnected) {
@@ -237,6 +285,30 @@
             ? '打理完成：种植 ' + pt + ' 株、催熟 ' + rp + ' 株、收获 ' + h + ' 株、宰杀 ' + s + ' 只、烹饪 ' + c + ' 道、孵化 ' + ht + ' 蛋、放养 ' + p + ' 只、喂食 ' + fd + ' 箱、浇水 ' + w + ' 株、施肥 ' + f + ' 株'
             : '没有可打理的内容', (pt + rp + h + s + c + ht + p + fd + w + f) > 0);
         }, 2500);
+      } catch (e) { toast('执行失败：' + e.message, false); }
+      return;
+    }
+    if (act === 'itemAdd' || act === 'itemAddGear') {
+      var item = window.__RH_ITEM__;
+      var sel = document.getElementById('rhmod-item-sel');
+      var defId = sel ? sel.value : '';
+      if (!item || !item.ready || !item.ready()) { toast('物品表未就绪：请先进到游戏主界面（能看到背包）再试', false); return; }
+      if (!defId) { toast('请先在列表里选中一个物品（可用上方搜索框过滤）', false); return; }
+      try {
+        if (act === 'itemAdd') {
+          var qty = parseInt(document.getElementById('rhmod-item-qty').value, 10) || 1;
+          var toStash = (document.getElementById('rhmod-item-target').value === 'stash');
+          var got = item.add(defId, qty, toStash);
+          toast('已添加 ' + defId + ' ×' + got + ' 到' + (toStash ? '仓库' : '背包'), true);
+        } else {
+          var inst = item.addGear(defId, {
+            level: document.getElementById('rhmod-gear-level').value,
+            enhance: document.getElementById('rhmod-gear-enh').value,
+            upgrade: document.getElementById('rhmod-gear-upg').value,
+            rarity: document.getElementById('rhmod-gear-rarity').value || undefined
+          });
+          toast(inst ? ('已添加装备 ' + defId + '（Lv' + inst.level + (inst.enhanceLevel ? '+' + inst.enhanceLevel : '') + ' · ' + inst.rarity + '）到背包') : '添加失败：接口未就绪', !!inst);
+        }
       } catch (e) { toast('执行失败：' + e.message, false); }
       return;
     }
