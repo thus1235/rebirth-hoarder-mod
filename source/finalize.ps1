@@ -21,7 +21,7 @@ Write-Host '[整理] 2/4 重建分享包...' -ForegroundColor Cyan
 if (Test-Path $zip) { Remove-Item $zip -Force }
 # 显式使用 Windows 自带 bsdtar（System32），避免 PATH 里 GNU tar 把 D:\ 当远程主机
 $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
-& $tarExe -a -c -f $zip --exclude="rh_backups" --exclude="*.zip" --exclude="*.log" -C $root '修改器'
+& $tarExe -a -c -f $zip --exclude="rh_backups" --exclude="*.zip" --exclude="*.log" --exclude="rh_editor_lang.txt" --exclude="rh_recent_items.txt" -C $root '修改器'
 if ($LASTEXITCODE -ne 0) { Write-Host '[错误] 打包失败' -ForegroundColor Red; exit 1 }
 
 Write-Host '[整理] 3/4 校验分享包...' -ForegroundColor Cyan

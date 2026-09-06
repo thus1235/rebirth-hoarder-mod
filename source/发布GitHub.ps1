@@ -25,7 +25,7 @@ if (-not (Test-Path "D:\桌面\末世：我有一辆房车\Rebirth Hoarder.exe")
 Write-Step '组装最新内容到 github_repo/mod ...'
 if (Test-Path "$gh\mod") { Remove-Item "$gh\mod" -Recurse -Force }
 New-Item -ItemType Directory -Force -Path "$gh\mod\patched" | Out-Null
-Get-ChildItem "$root\修改器" -File | Where-Object { $_.Extension -notin '.log' } | ForEach-Object { Copy-Item $_.FullName "$gh\mod" -Force }
+Get-ChildItem "$root\修改器" -File | Where-Object { $_.Extension -notin '.log' -and $_.Name -notmatch 'rh_editor_lang|rh_recent_items|rh_editor.log' } | ForEach-Object { Copy-Item $_.FullName "$gh\mod" -Force }
 Get-ChildItem "$root\修改器\patched" -File | ForEach-Object { Copy-Item $_.FullName "$gh\mod\patched" -Force }
 # 分享包 zip：优先取 分享包\ 下最新的 末世房车MOD-v*.zip（2026-09-05 起改为版本号命名）
 $latestZip = Get-ChildItem "$root\分享包" -Filter '末世房车MOD-v*.zip' -ErrorAction SilentlyContinue |
