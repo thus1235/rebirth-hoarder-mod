@@ -1152,13 +1152,53 @@ namespace RhSaveTrainer
             catch { /* 清理失败不阻断主流程 */ }
         }
 
+        // 罗列存档目录下的进度档（progress-*.json），帮用户判断「文件不存在」的原因
+        static string DescribeSavesDir(string dir)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return Lang.L("（存档目录不存在）") + "\n";
+                StringBuilder sb = new StringBuilder(Lang.L("该目录下的进度档（progress-*.json）：") + "\n");
+                bool any = false;
+                foreach (string f in Directory.GetFiles(dir, "progress-*.json", SearchOption.TopDirectoryOnly))
+                {
+                    any = true;
+                    FileInfo fi = new FileInfo(f);
+                    sb.Append("  · " + fi.Name + "（" + Math.Ceiling(fi.Length / 1024.0) + " KB，" + fi.LastWriteTime.ToString("MM-dd HH:mm") + "）\n");
+                }
+                if (!any) sb.Append(Lang.L("（一个都没有）") + "\n");
+                return sb.ToString();
+            }
+            catch { return Lang.L("（无法读取存档目录）") + "\n"; }
+        }
+
+        // 启动自动读档：优先当前槽位；否则自动跳到第一个有档的槽位；全都没有只给状态提示（不弹窗）
+        void AutoLoadOnStart()
+        {
+            if (File.Exists(SlotFile)) { DoLoad(); return; }
+            for (int i = 1; i < Slots.Length; i++)
+            {
+                if (File.Exists(Path.Combine(SavesDir, "progress-" + Slots[i] + ".json")))
+                {
+                    _slotBox.SelectedIndex = i;   // 触发 SelectedIndexChanged -> DoLoad
+                    return;
+                }
+            }
+            SetStatus(Lang.L("未找到进度档（progress-*.json）：进游戏完成开局、第一次存档后再读取；目录不对可点「浏览…」修改。"));
+        }
+
         void DoLoad()
         {
             string path = SlotFile;
             if (!File.Exists(path))
             {
                 SetStatus("未找到存档: " + path);
-                Msg("存档文件不存在:\n" + path, "未找到", MessageBoxIcon.Warning);
+                Msg("存档文件不存在:\n" + path + "\n\n" + DescribeSavesDir(Path.GetDirectoryName(path)) +
+                    Lang.L("说明：progress-*.json 是游戏的进度档，游戏在完成开局、第一次存档之后才会生成。") + "\n" +
+                    Lang.L("· 刚安装游戏或还没开局：先进游戏玩到第一次自动存档，再来读取修改") + "\n" +
+                    Lang.L("· 存档不在上面这个目录：点顶部「浏览…」选择正确的 saves 目录再读取") + "\n" +
+                    Lang.L("· 想确认目录里有没有档：看上面的列表，或到游戏里手动存一个进度档"),
+                    "未找到", MessageBoxIcon.Warning);
                 return;
             }
             try
@@ -1756,7 +1796,7 @@ namespace RhSaveTrainer
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             MainForm f = new MainForm();
-            f.Shown += delegate(object s, EventArgs e) { if (File.Exists(f.SlotFile)) f.DoLoad(); };
+            f.Shown += delegate(object s, EventArgs e) { f.AutoLoadOnStart(); };
             Application.Run(f);
         }
 
