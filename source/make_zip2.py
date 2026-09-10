@@ -11,7 +11,7 @@ count = 0
 for root, dirs, files in os.walk(src):
     dirs[:] = [d for d in dirs if d not in ('rh_backups', 'patched')]
     for f in files:
-        if f.endswith('.zip') or f.endswith('.log') or f in ('rh_editor_lang.txt', 'rh_recent_items.txt', 'rh_editor.log'):
+        if f.endswith('.zip') or f.endswith('.log') or f.startswith('.__') or f in ('rh_editor_lang.txt', 'rh_recent_items.txt', 'rh_editor.log', '诊断报告.txt'):
             continue
         full = os.path.join(root, f)
         rel = os.path.relpath(full, src).replace(os.sep, '/')
