@@ -1,4 +1,4 @@
-// apply_patch6.js - 自动秒杀模式（v3.21 语义自适应版）
+// apply_patch6.js - 自动秒杀模式（v3.22 语义自适应版）
 //   P1: 桥接追加 setAutoWin/getAutoWin（forceExit 打开撤离确认界面，确认后正常带出掉落）
 //   P2: 自动秒杀 effect（跳过守关BOSS：秒杀会跳过其正常击杀/通关流程，导致战利品结算卡死）
 // 依赖 patch5 已注入桥接（同一 ctx 的变量名）。

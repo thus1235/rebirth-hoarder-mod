@@ -1,4 +1,4 @@
-// apply_patches.js - TowerExploration 基础补丁（v3.21 语义自适应版）
+// apply_patches.js - TowerExploration 基础补丁（v3.22 语义自适应版）
 //   P1: 移除"楼层跳转需要定位器道具"限制
 //   P2: 移除 bestLocalFloor 100 层上限
 //   P3a/P3b: 进图默认选中"最高已解锁楼层"（canSelectStartFloor 开启时）
@@ -36,11 +36,33 @@ function patch({ src, ctx, log }) {
   }
 
   // ---- P2: bestLocalFloor 100 层上限 ----
+  // 幂等处理：游戏若仍有硬上限则去掉；若游戏已原生改为无上限（上限走 endFloor 配置），
+  // 则不动代码、仅告警，避免把"补丁目标已消失"误判成锚点失效而中止安装。
   {
     const re = /Math\.max\(0,Math\.min\(100,([A-Za-z_$][\w$]*\?\.bestLocalFloor\?\?0)\)\)/g;
-    const m = expectOne(s, re, PATCH, 'P2 100层上限');
-    s = s.slice(0, m.index) + `Math.max(0,${m[1]})` + s.slice(m.index + m[0].length);
-    log(`P2 100层上限 OK`);
+    const hits = [...s.matchAll(re)];
+    if (hits.length === 1) {
+      const m = hits[0];
+      s = s.slice(0, m.index) + `Math.max(0,${m[1]})` + s.slice(m.index + m[0].length);
+      log('P2 100层上限 OK（已移除硬上限）');
+    } else if (hits.length === 0) {
+      // 校验原生形态：bestLocalFloor 的唯一读取点不再被 Math.min(100,…) 包裹
+      const reRaw = /Math\.max\(0,([A-Za-z_$][\w$]*\?\.bestLocalFloor\?\?0)\)/g;
+      const raw = [...s.matchAll(reRaw)];
+      if (raw.length === 1) {
+        log('P2 跳过：游戏已原生无 100 层硬上限（上限由区域 endFloor 配置控制）');
+        if (ctx) {
+          ctx.warnings = ctx.warnings || [];
+          ctx.warnings.push('P2: 游戏版本已原生移除 bestLocalFloor 的 100 层硬上限，MOD 无需再改（若实际仍受限请反馈）');
+        }
+      } else {
+        throw new PatchError(PATCH, 'P2 100层上限', `未找到 Math.min(100,…) 包裹，且原生形态命中 ${raw.length} 处（期望 1）`,
+          [{ desc: 'bestLocalFloor 全部出现处', re: /bestLocalFloor/g, src: s }]);
+      }
+    } else {
+      throw new PatchError(PATCH, 'P2 100层上限', `匹配 ${hits.length} 处，期望 1 处`,
+        [{ desc: '100层上限候选', re, src: s }]);
+    }
   }
 
   // ---- P3a/P3b: 楼层地图组件 Ms 内部"进图默认选中最高已解锁楼层" ----

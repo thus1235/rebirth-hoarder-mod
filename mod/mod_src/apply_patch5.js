@@ -1,4 +1,4 @@
-// apply_patch5.js - 注入 F8 桥接(window.__RH_MOD__) + 防御性Wa（v3.21 语义自适应版）
+// apply_patch5.js - 注入 F8 桥接(window.__RH_MOD__) + 防御性Wa（v3.22 语义自适应版）
 // 桥接能力：jumpToTopFloor / unlockAllFloors / unlockToFloor / restoreFloors /
 //           restoreProgressFloor / instantWin / forceExit（面板按键经 index.js 面板调用）
 // 所有组件变量名由 rh_resolve.resolveCtx 从语义锚点解析，桥接文本按解析结果拼装。
@@ -43,16 +43,20 @@ function patch({ src, ctx, log }) {
   // ---- P2: 防御性Wa —— 已废弃（Wa 保持游戏原版"战报确认进三选一"），跳过 ----
 
   // ---- P3: 防御性 Wa（撤离结算防 undefined 崩溃） ----
-  // 形态: Wa=s.useCallback(n=>{const c=xa(a)&&a.clearedFloorThisRun>=Ae.floor?"chapter_cleared":"evacuated";Ue(so(a,c,n))},[Ue,Ae.floor,a])
+  // 只锚定语义骨架：X=useCallback(param=>{const c=<任意判定>?"chapter_cleared":"evacuated";FINISH(SO(PHASE,c,param,...))},[deps])
+  // 判定式与 SO 的额外参数都随游戏版本变化（9-09 版为 `PRE(phase)&&phase.clearedFloorThisRun>=F.floor`，
+  // 10-02 版简化为 `PRE(phase)` 且 SO 多了第 4 个 options 参数），因此判定式整体捕获、调用参数整体透传。
   const reW = new RegExp(
-    '([A-Za-z_$][\\w$]*)=' + escRe(react) + '\\.useCallback\\(([A-Za-z_$][\\w$]*)=>\\{const ([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)\\(' +
-    escRe(phase) + '\\)&&' + escRe(phase) + '\\.clearedFloorThisRun>=([A-Za-z_$][\\w$]*)\\.floor\\?"chapter_cleared":"evacuated";' +
-    '([A-Za-z_$][\\w$]*)\\(([A-Za-z_$][\\w$]*)\\(' + escRe(phase) + ',\\3,\\2\\)\\)\\},\\[([^\\]]+)\\]\\)');
+    '([A-Za-z_$][\\w$]*)=' + escRe(react) + '\\.useCallback\\(([A-Za-z_$][\\w$]*)=>\\{const ([A-Za-z_$][\\w$]*)=([\\s\\S]{0,220}?)\\?"chapter_cleared":"evacuated";' +
+    '([A-Za-z_$][\\w$]*)\\(([A-Za-z_$][\\w$]*)\\(' + escRe(phase) + ',\\3,\\2([\\s\\S]{0,220}?)\\)\\)\\},\\[([^\\]]+)\\]\\)');
   const w = expectOne(src, reW, PATCH, '撤离结算 Wa');
-  const [ , wName, wParam, wLocal, wPred, wFloor, wFinish, wSo, wDeps] = w;
-  const wTo = `${wName}=${react}.useCallback(${wParam}=>{try{const ${wLocal}=${wPred}(${phase})&&${phase}.clearedFloorThisRun>=${wFloor}.floor?"chapter_cleared":"evacuated";${wFinish}(${wSo}(${phase},${wLocal},${wParam}))}catch(e){console.error("[MOD]Da",e);${wFinish}(${wSo}(${phase},"evacuated",[],{consumeActionHours:!1,threatGain:0}))}},[${wFinish},${wSo},${wFloor}.floor,${phase}])`;
+  const [ , wName, wParam, wLocal, wPred, wFinish, wSo, wExtraArgs, wDeps] = w;
+  const pred = wPred.trim();
+  const extra = wExtraArgs.trim();
+  const extraCall = extra ? (extra.startsWith(',') ? extra : ',' + extra) : '';
+  const wTo = `${wName}=${react}.useCallback(${wParam}=>{try{const ${wLocal}=${pred}?"chapter_cleared":"evacuated";${wFinish}(${wSo}(${phase},${wLocal},${wParam}${extraCall}))}catch(e){console.error("[MOD]Da",e);${wFinish}(${wSo}(${phase},"evacuated",[],{consumeActionHours:!1,threatGain:0}))}},[${wDeps}])`;
   src = src.slice(0, w.index) + wTo + src.slice(w.index + w[0].length);
-  log(`防御性Wa OK (${wName}, finish=${wFinish} so=${wSo})`);
+  log(`防御性Wa OK (${wName}, finish=${wFinish} so=${wSo} pred=${JSON.stringify(pred)} deps=[${wDeps}])`);
 
   ctx.bridge = bridge; // 供 patch6 复用
   return src;

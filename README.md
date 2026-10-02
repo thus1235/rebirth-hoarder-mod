@@ -2,11 +2,11 @@
 
 **Rebirth Hoarder Mod & Save Editor** — 《末世：我有一辆房车》(Rebirth Hoarder, Steam/Electron) 的第三方单机增强工具：游戏内 F8 修改面板 + 独立存档修改器，二者统一版本、均支持 **简体中文 / English** 切换。
 
-![Version](https://img.shields.io/badge/版本-v3.21-blue) ![Game](https://img.shields.io/badge/适配游戏-自动适配(语义锚点)-orange) ![Platform](https://img.shields.io/badge/平台-Windows%2010%2F11-lightgrey) ![Runtime](https://img.shields.io/badge/运行环境-免安装(Electron内核%20%2B%20.NET%204.x)-green)
+![Version](https://img.shields.io/badge/版本-v3.22-blue) ![Game](https://img.shields.io/badge/适配游戏-自动适配(语义锚点)-orange) ![Platform](https://img.shields.io/badge/平台-Windows%2010%2F11-lightgrey) ![Runtime](https://img.shields.io/badge/运行环境-免安装(Electron内核%20%2B%20.NET%204.x)-green)
 
 > ⚠️ 仅供个人单机体验，请勿用于联机/商业用途。作者：thus
 >
-> **v3.21 起自动适配游戏版本**：游戏小更新（压缩变量名 / 哈希文件名变化）无需等新版 MOD，安装时现场按「语义锚点」自动重新解析适配；遇到大重构则安全中止、自动还原原版，并在游戏 resources 下生成《MOD适配诊断.txt》，发给作者即可快速适配。
+> **v3.21 起自动适配游戏版本（v3.22 已支持 10-02 大更新）**：游戏小更新（压缩变量名 / 哈希文件名变化）无需等新版 MOD，安装时现场按「语义锚点」自动重新解析适配；遇到大重构则安全中止、自动还原原版，并在游戏 resources 下生成《MOD适配诊断.txt》，发给作者即可快速适配。
 
 ---
 
@@ -46,7 +46,7 @@
 
 - **更新**：MOD 已安装时再跑一次 `安装MOD.bat`，几秒钟覆盖补丁，无需先还原。
 - **还原原版**：双击 **`还原MOD.bat`**，游戏完全恢复原状，不影响存档。
-- **自动适配（v3.21）**：游戏更新后无需等新版 MOD——安装器现场解包并按语义锚点自动适配变量名/文件名变化；若代码大重构导致锚点失效，会安全中止、自动还原原版并生成《MOD适配诊断.txt》（游戏 resources 下），把该文件发给作者即可加快适配。
+- **自动适配（v3.21 起，v3.22 增强）**：游戏更新后无需等新版 MOD——安装器现场解包并按语义锚点自动适配变量名/文件名变化；若代码大重构导致锚点失效，会安全中止、自动还原原版并生成《MOD适配诊断.txt》（游戏 resources 下），把该文件发给作者即可加快适配。
 - **中断恢复**：安装中途断电/关窗，下次双击 `安装MOD.bat` 自动恢复原版并重装。
 
 ### 存档修改器
@@ -133,12 +133,12 @@
 ```
 github_repo/
 ├── README.md                 # 本文件
-├── mod/                      # ★ 分发包（与 分享包/末世房车MOD-v3.21-*.zip 一致）
+├── mod/                      # ★ 分发包（与 分享包/末世房车MOD-v3.22-*.zip 一致）
 │   ├── install_mod.ps1           # 薄启动器：定位游戏目录 → 用游戏自带 Electron 内核跑 mod_patcher.js
 │   ├── 安装MOD.bat / 还原MOD.bat # 双击安装更新 / 还原原版
 │   ├── 存档修改器.exe            # 存档修改器（单文件免安装）
 │   ├── 使用说明.txt / 更新说明.txt
-│   ├── 末世房车MOD-v3.21-*.zip   # 打包好的分发包
+│   ├── 末世房车MOD-v3.22-*.zip   # 打包好的分发包
 │   └── mod_src/                  # ★ 补丁脚本（安装时现场解包打补丁，请勿删改）
 └── source/                   # ★ 开发源码（二次开发）
     ├── save_editor.cs            # 修改器主窗体（读取/写入/校验和重建）
@@ -155,7 +155,7 @@ github_repo/
     ├── 发布GitHub.ps1            # 同步 + 提交 + 推送 GitHub
     ├── install_mod_thin.ps1      # install_mod.ps1 的开发源码（薄启动器）
     ├── make_zip2.py              # 分享包打包脚本（UTF-8 文件名）
-    ├── rh_src/                   # MOD 补丁脚本（v3.21 语义化自适应）
+    ├── rh_src/                   # MOD 补丁脚本（v3.22 语义化自适应）
     │   ├── mod_patcher.js        # ★ 统一补丁器：解包→调度→校验→安装→诊断/还原
     │   ├── rh_resolve.js         # ★ 语义锚点解析模块（自动适配压缩变量名）
     │   ├── apply_patches.js / apply_patch2~6.js   # 楼层/战斗/桥接补丁
@@ -166,7 +166,7 @@ github_repo/
     └── csharp-src/               # C# 源码交付包（含 编译.bat / 说明.txt）
 ```
 
-- **v3.21 安装流程**：`安装MOD.bat` → `install_mod.ps1`（薄启动器）→ 优先用游戏自带 Electron 内核（ELECTRON_RUN_AS_NODE）运行 `mod_src/mod_patcher.js`（失败回退系统 Node）→ 现场解包 app.asar → 语义锚点解析变量名 → 打 6 组补丁 → 17 项标记校验 → 切换安装；任一环节失败自动还原原版，锚点失效生成《MOD适配诊断.txt》。
+- **v3.22 安装流程**：`安装MOD.bat` → `install_mod.ps1`（薄启动器）→ 优先用游戏自带 Electron 内核（ELECTRON_RUN_AS_NODE）运行 `mod_src/mod_patcher.js`（失败回退系统 Node）→ 现场解包 app.asar → 语义锚点解析变量名 → 打 6 组补丁 → 17 项标记校验 → 切换安装；任一环节失败自动还原原版，锚点失效生成《MOD适配诊断.txt》。
 - **自动适配原理**：补丁锚点全部基于压缩后仍稳定的语义特征（字符串字面量、组件 props 名、函数调用模式），游戏小更新自动重新解析压缩变量名，无需人工适配。
 
 ---
@@ -196,7 +196,7 @@ github_repo/
 ## 📅 更新日志
 
 <details>
-<summary><b>展开完整日志（v3.6 → v3.21）</b></summary>
+<summary><b>展开完整日志（v3.6 → v3.22）</b></summary>
 
 | 版本 | 日期 | 要点 |
 |------|------|------|
@@ -215,6 +215,7 @@ github_repo/
 | v3.18 | 09-06 | 「添加物品/装备」移入存档修改器，重做搜索引擎式选择器（拼音/模糊/多关键词/最近记忆）；物品表构建期从游戏 ITEMS 自动提取 |
 | v3.19 | 09-06 | MOD 与修改器统一版本号；全面 简体中文/English 双语（界面全翻译、状态消息全覆盖、槽位/装备/卡牌行本地化、Language 按钮明确标注）；存档修改器「添加物品」页 + 物品过滤 + 删除物品；当日补充：中文模式残留英文（revision/slot/checksum/Lv/payload）全部中文化，语言按钮改为「🌐 → English / 🌐 → 中文」 |
 | v3.20 | 09-09 | 适配 9 月 9 日游戏更新（app.asar 1463506265，变量名大范围重命名），全部补丁锚点重新映射；功能与 v3.19 一致 |
+| v3.22 | 10-02 | **适配 10-02 游戏大更新**（app.asar 1.46G→2.64G，index.js +63%）：区域配置函数解析改为「直接调用 / 赋值传播」双通道投票（游戏改用了 `P=X(nodeId)…P.chapterIndex` 写法）；「100 层上限」补丁改幂等（游戏已原生移除该硬上限，上限改走区域 endFloor，不再误判失效）；撤离结算防御补丁只锚定 `chapter_cleared`/`evacuated` 语义骨架，判定式与额外参数整体透传；修复 3.3MB 大文件下的 O(n²) 解析性能隐患；新增桥接运行时模拟（37 条断言，真实执行注入代码验证读写行为）。新版 17 项 + 旧版 17 项校验、29 条仿真、37 条运行时断言、真机全量与快速重装双路径全部通过 |
 | v3.21 | 09-09 | **自动适配架构**：MOD 不再携带预打补丁文件，改为安装时现场解包+语义锚点打补丁——游戏小更新无需等新版 MOD 自动适配；大重构安全中止并生成《MOD适配诊断.txt》；中断恢复 + 17 项标记校验失败自动还原；安装器改用游戏自带 Electron 内核运行（玩家免装 Node.js）；安装产物与 v3.20 逐字节一致（回归通过） |
 
 </details>

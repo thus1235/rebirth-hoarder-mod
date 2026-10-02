@@ -1,4 +1,4 @@
-﻿# install_mod.ps1 - 末世：我有一辆房车 MOD 安装器（v3.21 自动适配版·薄启动器）
+﻿# install_mod.ps1 - 末世：我有一辆房车 MOD 安装器（v3.22 自动适配版·薄启动器）
 #
 # 本脚本只做三件事：定位游戏目录 -> 用游戏自带内核运行 mod_patcher.js -> 显示结果。
 # 解包 / 语义打补丁 / 校验 / 安装 / 失败自动还原 / 诊断报告 全部由 mod_src\mod_patcher.js 完成，
@@ -107,7 +107,7 @@ if (-not $ok) {
 if ($ok -and $code -eq 0) {
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Green
-    Write-Host ' MOD 安装成功！（自动适配架构 v3.21）' -ForegroundColor Green
+    Write-Host ' MOD 安装成功！（自动适配架构 v3.22）' -ForegroundColor Green
     Write-Host ' 启动游戏，进入废墟探索后按 F8 打开修改面板。' -ForegroundColor Green
     Write-Host ' 如需还原原版，请运行「还原MOD.bat」。' -ForegroundColor Green
     Write-Host '============================================================' -ForegroundColor Green

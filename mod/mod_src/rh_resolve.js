@@ -1,4 +1,4 @@
-// rh_resolve.js - 语义锚点解析：从压缩后的游戏代码里反查变量名（v3.21 自动适配核心）
+// rh_resolve.js - 语义锚点解析：从压缩后的游戏代码里反查变量名（v3.22 自动适配核心）
 // 原理：字符串字面量/对象字段名/prop 名不会被压缩改名，用它们定位代码位置，
 //       再用正则捕获邻近的压缩标识符。任何一步失败都抛 PatchError（带诊断信息）。
 'use strict';
@@ -95,10 +95,52 @@ function resolveCtx(te) {
     if (!seg.includes('combatState')) throw new PatchError(P, '战斗结算回调', '附近未见 combatState，疑似定位错误', []);
   }
 
-  // 区域配置函数：`X(x).chapterIndex` 最高频标识符（即 index.js 的 az 导入别名）
-  const rc = modeOf(te, /([A-Za-z_$][\w$]*)\([A-Za-z_$][\w$]*\)\.chapterIndex/g, 1);
-  if (!rc.name || rc.count < 2) throw new PatchError(P, '区域配置函数(chapterIndex)', '高频解析失败', []);
-  ctx.regionCfg = rc.name;
+  // 区域配置函数：返回对象带 chapterIndex 的那个函数
+  //   写法 A（旧）：直接调用取属性    X(nodeId).chapterIndex
+  //   写法 B（新）：先赋值再取属性    P=X(nodeId) … P.chapterIndex
+  // 两通道分别投票，取得票更高者；票数相同回退写法 A（保持旧版本解析结果不变）。
+  const rcDirect = modeOf(te, /([A-Za-z_$][\w$]*)\([A-Za-z_$][\w$]*\)\.chapterIndex/g, 1);
+  // 写法 B 分两步：先收集 `P=FN(arg)` 赋值对，再统计 P 的区域语义字段读取量。
+  // （不用单条正则是因为压缩后中间常夹着 `,Y=yr(T,` 这类含括号的调用，正则窗口无法覆盖）
+  // 性能：TE 已达 3MB+，绝不能对每个候选变量都全串 split/regex 一次（O(n²) 会卡死安装器）。
+  //       改为一次性扫描出「obj -> 区域字段读取总数」的 Map，再做 O(1) 查表。
+  const objFieldScore = (() => {
+    const m = new Map();
+    for (const hit of te.matchAll(/([A-Za-z_$][\w$]*)\.(chapterIndex|chapterName|endFloor|difficultyLabel)\b/g)) {
+      const obj = hit[1];
+      m.set(obj, (m.get(obj) || 0) + 1);
+    }
+    return m;
+  })();
+  const assignTally = new Map();
+  for (const m of te.matchAll(/([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*)\)/g)) {
+    const obj = m[1], fn = m[2];
+    if (obj === fn) continue;
+    const readCount = objFieldScore.get(obj) || 0;
+    if (readCount <= 0) continue;
+    let t = assignTally.get(fn);
+    if (!t) { t = { name: fn, count: 0, objs: new Set() }; assignTally.set(fn, t); }
+    t.count += readCount;
+    t.objs.add(obj);
+  }
+  const rcAssign = [...assignTally.values()]
+    .sort((a, b) => b.count - a.count || b.objs.size - a.objs.size)[0] || { name: null, count: 0, objs: new Set() };
+
+  const okDirect = rcDirect.name && rcDirect.count >= 2;
+  const okAssign = rcAssign.name && rcAssign.count >= 3;
+  if (!okDirect && !okAssign) {
+    throw new PatchError(P, '区域配置函数(chapterIndex)', '高频解析失败', [
+      { desc: '写法A 直接调用', re: /([A-Za-z_$][\w$]*)\([A-Za-z_$][\w$]*\)\.chapterIndex/g, src: te },
+      { desc: '写法B 赋值传播', re: /([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*)\)/g, src: te },
+    ]);
+  }
+  if (okAssign && (!okDirect || rcAssign.count > rcDirect.count)) {
+    ctx.regionCfg = rcAssign.name;
+    ctx.regionCfgMode = `assign:${rcAssign.count}(${[...rcAssign.objs].join(',')})/direct:${rcDirect.count}`;
+  } else {
+    ctx.regionCfg = rcDirect.name;
+    ctx.regionCfgMode = `direct:${rcDirect.count}/assign:${rcAssign.count}`;
+  }
 
   // 调试标志：X=!!p2Data.debugTowerFullFloorJump
   const dbg = expectOne(te, new RegExp('([A-Za-z_$][\\w$]*)=!!(' + escRe(ctx.p2Data) + ')\\.debugTowerFullFloorJump'), P, '调试标志 debugTowerFullFloorJump');

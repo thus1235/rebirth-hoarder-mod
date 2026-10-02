@@ -1,4 +1,4 @@
-// mod_patcher.js - MOD 统一补丁器（v3.21 自动适配架构核心）
+// mod_patcher.js - MOD 统一补丁器（v3.22 自动适配架构核心）
 // 运行方式：由安装器以"游戏 exe 的 Node 模式"运行（ELECTRON_RUN_AS_NODE=1），也可用系统 node。
 //
 // 用法:
@@ -17,7 +17,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { PatchError, resolveCtx } = require('./rh_resolve.js');
 
-const MOD_VERSION = 'v3.21';
+const MOD_VERSION = 'v3.22';
 
 function log(m) { console.log('[PATCHER] ' + m); }
 function sha256(buf) { return crypto.createHash('sha256').update(buf).digest('hex'); }

@@ -1,4 +1,4 @@
-// apply_patch4.js - 一键解锁全部楼层（标志位方案，v3.21 语义自适应版）
+// apply_patch4.js - 一键解锁全部楼层（标志位方案，v3.22 语义自适应版）
 // bt(bestLocalFloor) useMemo 读取楼层进度：解锁标志开启时返回区域最高层。
 // 解锁标志读 window.__RH_UNLOCK_ALL__ / __RH_UNLOCK_TO__（会话级，重启游戏自动复位）；
 // metaSave.rhMod 保留在依赖数组里仅作 useMemo 重算触发。
