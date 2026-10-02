@@ -147,8 +147,10 @@ function extractAsar(archive, outDir) {
   } finally { fs.closeSync(fd); }
 }
 
-// 从 asar 只提取单个文件（快速重装路径用）
-function extractOneFromAsar(archive, pathRegex) {
+// 从 asar 提取所有匹配 pathRegex 的文件（快速重装路径用）。
+// 注意必须返回「全部」候选：assets 里可能有多个同前缀文件（见 TARGETS.probe 说明），
+// 取第一个会因遍历顺序不同而误选，故交由 pickTargetFile 用探针+体积筛选。
+function extractCandidatesFromAsar(archive, pathRegex) {
   const fd = fs.openSync(archive, 'r');
   try {
     const sizeBuf = Buffer.alloc(8);
@@ -159,34 +161,52 @@ function extractOneFromAsar(archive, pathRegex) {
     const strLen = pickle.readUInt32LE(4);
     const header = JSON.parse(pickle.slice(8, 8 + strLen).toString('utf8'));
     const dataStart = 8 + headerSize;
-    let found = null;
+    const found = [];
     (function walk(node, prefix) {
-      if (found) return;
       for (const name of Object.keys(node.files || {})) {
         const child = node.files[name];
         const p = prefix ? prefix + '/' + name : name;
         if (child.files) walk(child, p);
-        else if (typeof child.offset === 'string' && pathRegex.test(p)) { found = { path: p, size: child.size, offset: parseInt(child.offset, 10) }; break; }
+        else if (typeof child.offset === 'string' && pathRegex.test(p)) found.push({ path: p, size: child.size, offset: parseInt(child.offset, 10) });
       }
     })(header, '');
-    if (!found) return null;
-    const buf = Buffer.alloc(found.size);
-    let pos = 0;
-    while (pos < found.size) {
-      const n = fs.readSync(fd, buf, pos, found.size - pos, dataStart + found.offset + pos);
-      if (n <= 0) throw new Error('read fail');
-      pos += n;
-    }
-    return { name: path.basename(found.path), buf };
+    return found.map(f => {
+      const buf = Buffer.alloc(f.size);
+      let pos = 0;
+      while (pos < f.size) {
+        const n = fs.readSync(fd, buf, pos, f.size - pos, dataStart + f.offset + pos);
+        if (n <= 0) throw new Error('读取失败: ' + f.path);
+        pos += n;
+      }
+      return { name: path.basename(f.path), size: f.size, buf, src: buf.toString('utf8') };
+    });
   } finally { fs.closeSync(fd); }
 }
 
 // ---------- 补丁调度 ----------
+// probe：该目标的语义探针。游戏 assets 里可能存在多个同前缀文件——例如 10-02 更新后
+//        新增了 index-ad130a48.js，它只是 `import{...}from"./index-7a404b5b.js"` 的再导出壳，
+//        与真正的 index bundle 同时匹配 /^index-.*\.js$/。只取「第一个匹配」会因
+//        readdir 返回顺序不同而把面板注入到再导出壳里（静默失效）。故每个目标声明一个
+//        必然存在于真 bundle 的探针，候选须命中探针，再取体积最大者。
 const TARGETS = [
-  { key: 'te', fileRe: /^dist_steam\/assets\/TowerExploration-.*\.js$/, patches: ['apply_patches', 'apply_patch2', 'apply_patch4', 'apply_patch5', 'apply_patch6'] },
-  { key: 'idx', fileRe: /^dist_steam\/assets\/index-.*\.js$/, patches: ['apply_patch3'] },
-  { key: 'ac', fileRe: /^dist_steam\/assets\/AppContent-.*\.js$/, patches: ['apply_eco'] },
+  { key: 'te', fileRe: /^dist_steam\/assets\/TowerExploration-.*\.js$/, probe: 'rh-tower-exploration-root', patches: ['apply_patches', 'apply_patch2', 'apply_patch4', 'apply_patch5', 'apply_patch6'] },
+  { key: 'idx', fileRe: /^dist_steam\/assets\/index-.*\.js$/, probe: 'useState(', patches: ['apply_patch3'] },
+  { key: 'ac', fileRe: /^dist_steam\/assets\/AppContent-.*\.js$/, probe: 'syncAndSaveGallery', patches: ['apply_eco'] },
 ];
+
+// 从候选里选出真正的目标文件：必须命中语义探针，再取体积最大者。
+// candidates: [{ name, size, buf, src }]
+function pickTargetFile(candidates, t) {
+  const ok = candidates.filter(c => c.src.includes(t.probe));
+  if (!ok.length) {
+    throw new PatchError('文件选择', `${t.key} 目标文件`,
+      `匹配 ${t.fileRe} 的候选共 ${candidates.length} 个（${candidates.map(c => c.name).join(', ')}），均不含语义探针「${t.probe}」`,
+      [{ desc: '候选文件体积', re: /^/, src: candidates.map(c => `${c.name}=${c.size}字节`).join('  ') }]);
+  }
+  ok.sort((a, b) => b.size - a.size);
+  return ok[0];
+}
 
 function loadPatch(name) { return require('./' + name + '.js').patch; }
 
@@ -255,6 +275,10 @@ function verifyMarkers(sources, ctx) {
     ['TE 楼层还原', te.includes('restoreProgressFloor')],
     ['TE 防御性Wa', te.includes('[MOD]Da')],
     ['TE P1 定位器限制已移除', /=0;if\(/.test(te) && !/![A-Za-z_$][\w$]*&&[A-Za-z_$][\w$]*\.isActive&&[A-Za-z_$][\w$]*>1&&![A-Za-z_$][\w$]*\.includes\(/.test(te)],
+    // P2 有两条合法路径：补丁移除硬上限，或游戏原生已无上限（10-02 起游戏自行移除，
+    // 上限改由区域 endFloor 控制，其取值域 20/40/60/80/100 ≤ 100 故与原行为等价）。
+    // 两者任一成立即通过；仍存在 `Math.min(100, X?.bestLocalFloor…)` 则说明上限未解除。
+    ['TE 楼层100上限已解除', !/Math\.min\(100,[A-Za-z_$][\w$]*\?\.bestLocalFloor/.test(te)],
     ['TE 不含面板(禁止 RH_MOD_PANEL)', !te.includes('RH_MOD_PANEL')],
     ['index 面板注入', idx.includes('/*==RH_MOD_PANEL==*/')],
     ['index 面板守卫', idx.includes('__RH_PANEL_READY__')],
@@ -288,10 +312,14 @@ function main() {
     const sources = {};
     for (const t of TARGETS) {
       const fnameRe = new RegExp(t.fileRe.source.split('/').pop()); // 取文件名部分（TowerExploration-.*\.js$）
-      const fname = fs.readdirSync(fromDir).find(f => fnameRe.test(f));
-      if (!fname) { console.error('[PATCHER] 未找到目标文件: ' + t.fileRe); process.exit(1); }
-      const buf = fs.readFileSync(path.join(fromDir, fname));
-      sources[t.key] = { name: fname, size: buf.length, buf, src: buf.toString('utf8') };
+      const names = fs.readdirSync(fromDir).filter(f => fnameRe.test(f));
+      if (!names.length) { console.error('[PATCHER] 未找到目标文件: ' + t.fileRe); process.exit(1); }
+      const cands = names.map(f => {
+        const buf = fs.readFileSync(path.join(fromDir, f));
+        return { name: f, size: buf.length, buf, src: buf.toString('utf8') };
+      });
+      sources[t.key] = pickTargetFile(cands, t);
+      log(`目标 ${t.key}: ${sources[t.key].name}${cands.length > 1 ? `（候选 ${cands.length} 个，按探针「${t.probe}」+体积筛选）` : ''}`);
     }
     runPatches(sources);
     if (!verifyMarkers(sources, {})) { console.error('[PATCHER] 标记校验失败'); process.exit(3); }
@@ -331,9 +359,9 @@ function main() {
     // 快速路径：从 bak 提取 3 个原版 js → 内存补丁 → 覆盖 app 内文件
     const sources = {};
     for (const t of TARGETS) {
-      const r = extractOneFromAsar(bak, t.fileRe);
-      if (!r) throw new Error('原版备份中未找到 ' + t.fileRe);
-      sources[t.key] = { name: r.name, size: r.buf.length, buf: r.buf, src: r.buf.toString('utf8') };
+      const cands = extractCandidatesFromAsar(bak, t.fileRe);
+      if (!cands.length) throw new Error('原版备份中未找到 ' + t.fileRe);
+      sources[t.key] = pickTargetFile(cands, t);
     }
     const ctx = runPatches(sources);
     if (!verifyMarkers(sources, ctx)) { console.error('[PATCHER] 标记校验失败'); process.exit(3); }
@@ -362,11 +390,15 @@ function main() {
   const assetsDir = path.join(tmpDir, 'dist_steam', 'assets');
   const sources = {};
   for (const t of TARGETS) {
-    const fname = fs.readdirSync(assetsDir).find(f => t.fileRe.test('dist_steam/assets/' + f));
-    if (!fname) throw new Error('解包结果中未找到 ' + t.fileRe);
-    const buf = fs.readFileSync(path.join(assetsDir, fname));
-    sources[t.key] = { name: fname, size: buf.length, buf, src: buf.toString('utf8') };
-    log(`目标 ${t.key}: ${fname} (${buf.length} 字节)`);
+    const cands = fs.readdirSync(assetsDir)
+      .filter(f => t.fileRe.test('dist_steam/assets/' + f))
+      .map(f => {
+        const buf = fs.readFileSync(path.join(assetsDir, f));
+        return { name: f, size: buf.length, buf, src: buf.toString('utf8') };
+      });
+    if (!cands.length) throw new Error('解包结果中未找到 ' + t.fileRe);
+    sources[t.key] = pickTargetFile(cands, t);
+    log(`目标 ${t.key}: ${sources[t.key].name} (${sources[t.key].size} 字节${cands.length > 1 ? `，候选 ${cands.length} 个，按探针「${t.probe}」+体积筛选` : ''})`);
   }
   const ctx = runPatches(sources);
 

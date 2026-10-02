@@ -32,15 +32,31 @@ function patch({ src, log }) {
   log('锚点 ' + anchor + ' @' + anchorIdx);
 
   // ---------- 2. 语义键解析（组件 props 解构对象：key -> 压缩名） ----------
-  function resolveSemanticKeys(s, idx) {
+  // 只在 watch（本补丁真正要用的语义键）上做歧义检测：窗口内有成千上万个 key:value
+  // （name/id/type 等天然多值），对全部键检测会误杀。
+  // 用法上，这 9 个键是"组件作用域内真实函数引用"的键名，窗口内应取值唯一；
+  // 若出现多个不同压缩名，说明结构变化导致无法确定哪个是真实引用，此处直接中止安装，
+  // 避免静默取到"同名不同义"的别的函数（v3.15 教训：喂食取到清定时器、浇水取到广告查询）。
+  function resolveSemanticKeys(s, idx, watch) {
     const seg = s.slice(Math.max(0, idx - 26000), idx + 40);
     const re = /([A-Za-z_$][\w$]*):([\w$]+)(?=[,}])/g;
     const map = {};
+    const seen = {};
     let mm;
-    while ((mm = re.exec(seg))) if (!(mm[1] in map)) map[mm[1]] = mm[2]; // 首次出现优先（同一对象内的键）
+    while ((mm = re.exec(seg))) {
+      const k = mm[1];
+      if (watch.indexOf(k) >= 0) (seen[k] = seen[k] || new Set()).add(mm[2]);
+      if (!(k in map)) map[k] = mm[2]; // 首次出现优先（已实测新旧版窗口内各键取值唯一）
+    }
+    const amb = watch.filter(k => seen[k] && seen[k].size > 1);
+    if (amb.length) {
+      throw new PatchError(PATCH, '语义键歧义',
+        '以下键在锚点前 26000 字符内出现多个不同压缩名：' +
+        amb.map(k => k + '=[' + [...seen[k]].join(',') + ']').join('；'),
+        [{ desc: '锚点', re: /syncAndSaveGallery:[\w$]+\}\),/, src: s.slice(Math.max(0, idx - 200), idx + 60) }]);
+    }
     return map;
   }
-  const keys = resolveSemanticKeys(src, anchorIdx);
   const WANT = [
     ['setGameState', '__RH_FN_SETSTATE__'],
     ['ensureFarmState', '__RH_FN_FARMSTATE__'],
@@ -52,6 +68,8 @@ function patch({ src, log }) {
     ['applyWater', '__RH_FN_WATER__'],
     ['applyFertilizer', '__RH_FN_FERT__'],
   ];
+  const keys = resolveSemanticKeys(src, anchorIdx, WANT.map(w => w[0]));
+
   const sym = {};
   for (const [key, ph] of WANT) {
     if (!keys[key]) throw new PatchError(PATCH, '语义键 ' + key, 'props 解构中未找到', [{ desc: '键 ' + key, re: new RegExp(key + ':'), src }]);
