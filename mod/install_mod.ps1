@@ -31,13 +31,13 @@ function Get-GameDirFrom([string]$path) {
         try { return (Resolve-Path -LiteralPath $p).Path } catch { return $p }
     }
     try {
-        foreach ($sub in (Get-ChildItem -LiteralPath $p -Directory -ErrorAction SilentlyContinue)) {
+        foreach ($sub in (Get-ChildItem -LiteralPath $p -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
             if (Test-Path (Join-Path $sub.FullName 'Rebirth Hoarder.exe')) { return $sub.FullName }
         }
         # 名字像本游戏的子目录，再多看一层：
         # 覆盖「D:\下载\末世房车\Rebirth Hoarder\」这类解压后多套一层的常见结构。
         # 只对名字命中的目录深入，因此盘根扫描不会变慢。
-        foreach ($sub in (Get-ChildItem -LiteralPath $p -Directory -ErrorAction SilentlyContinue)) {
+        foreach ($sub in (Get-ChildItem -LiteralPath $p -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
             if ($sub.Name -notmatch '(?i)rebirth|hoarder|房车') { continue }
             if (Test-Path (Join-Path $sub.FullName 'Rebirth Hoarder.exe')) { return $sub.FullName }
             try {
