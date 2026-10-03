@@ -17,6 +17,34 @@ function Say($m, $c) {
 }
 function Head($m) { Say ''; Say ('=' * 62); Say "  $m"; Say ('=' * 62) }
 
+# 调用「存档修改器.exe」自身的 C# 算法校验一个存档文件。
+# 复制到临时目录再校验，绝不污染存档目录；返回 @{Result;Computed;Stored;Revision;Slot;Dropped} 或 $null
+function Check-Save([string]$path) {
+    $exe = Join-Path $scriptDir '存档修改器.exe'
+    if (-not (Test-Path -LiteralPath $exe)) { return $null }
+    $tmpDir = Join-Path $env:TEMP ('rh_diag_' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+    try {
+        New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+        $copy = Join-Path $tmpDir 'save.json'
+        Copy-Item -LiteralPath $path -Destination $copy -Force
+        try { Start-Process -FilePath $exe -ArgumentList @('--check', ('"' + $copy + '"')) -Wait -NoNewWindow -ErrorAction Stop } catch {}
+        $rep = $copy + '.rhcheck.txt'
+        if (-not (Test-Path -LiteralPath $rep)) { return $null }
+        $r = @{ Dropped = @() }
+        foreach ($ln in ((Get-Content -LiteralPath $rep -Raw -Encoding UTF8) -split "`r?`n")) {
+            $t = $ln.Trim()
+            if     ($t -match '^result\s*:\s*(.+)$')            { $r.Result   = $Matches[1].Trim() }
+            elseif ($t -match '^!\s*会丢弃\s*:\s*(.+)$')         { $r.Dropped += $Matches[1].Trim() }
+            elseif ($t -match '^computed\s*:\s*(\S+)')          { $r.Computed = $Matches[1] }
+            elseif ($t -match '^stored\s*:\s*(\S+)')            { $r.Stored   = $Matches[1] }
+            elseif ($t -match '^revision\s*:\s*(\S+)')          { $r.Revision = $Matches[1] }
+            elseif ($t -match '^slot\s*:\s*(\S+)')              { $r.Slot     = $Matches[1] }
+        }
+        return $r
+    } catch { return $null }
+    finally { Remove-Item -LiteralPath $tmpDir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 # ---------- 0. 基本信息 ----------
 Head '0. 基本信息'
 $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
@@ -71,6 +99,15 @@ if ($steamPath) {
     foreach ($lib in ($libs | Select-Object -Unique)) {
         $cand = Join-Path $lib "steamapps\common\$GAME"
         if (Test-Path (Join-Path $cand "$GAME.exe")) { $gameDir = $cand; break }
+        # 注意：Steam 里的目录名可能是中文（实测「末世：我有一辆房车」），
+        # 所以不能只按英文名找，要遍历 common 下所有子目录、以「含 exe」为唯一判据。
+        $common = Join-Path $lib 'steamapps\common'
+        if (Test-Path -LiteralPath $common) {
+            foreach ($sub in (Get-ChildItem -LiteralPath $common -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+                if (Test-Path (Join-Path $sub.FullName "$GAME.exe")) { $gameDir = $sub.FullName; break }
+            }
+        }
+        if ($gameDir) { break }
     }
     if ($gameDir) {
         $manDir = Split-Path (Split-Path $gameDir -Parent) -Parent
@@ -93,10 +130,38 @@ if (-not $gameDir) {
     }
 }
 if (-not $gameDir) {
+    # 盘根 + 常见子目录 + 用户外壳目录（桌面/下载/文档）。
+    # 同样不按目录名匹配：只认「目录下存在 <游戏>.exe」这个硬事实。
+    $roots = New-Object System.Collections.ArrayList
+    foreach ($k in @('Desktop', 'Personal', '{374DE290-123F-4565-9164-39C4925E467B}')) {
+        try {
+            $v = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders' -ErrorAction SilentlyContinue).$k
+            if ($v) { [void]$roots.Add([Environment]::ExpandEnvironmentVariables($v)) }
+        } catch {}
+    }
+    foreach ($v in @($env:USERPROFILE,
+                     (Join-Path $env:USERPROFILE 'Desktop'),
+                     (Join-Path $env:USERPROFILE 'Downloads'),
+                     (Join-Path $env:USERPROFILE 'Documents'))) {
+        if ($v) { [void]$roots.Add($v) }
+    }
     foreach ($d in (Get-PSDrive -PSProvider FileSystem -ErrorAction SilentlyContinue | ForEach-Object { $_.Root })) {
-        foreach ($sub in @('', 'Games', '游戏', 'SteamLibrary\steamapps\common', 'Steam\steamapps\common')) {
-            $cand = Join-Path (Join-Path $d $sub) $GAME
-            if (Test-Path (Join-Path $cand "$GAME.exe")) { $gameDir = $cand; break }
+        [void]$roots.Add($d)
+        foreach ($sub in @('Games', '游戏', '单机游戏', 'PC Games', 'SteamLibrary\steamapps\common', 'Steam\steamapps\common', 'Program Files', 'Program Files (x86)')) {
+            [void]$roots.Add((Join-Path $d $sub))
+        }
+    }
+    foreach ($r in ($roots | Select-Object -Unique)) {
+        if (-not $r -or -not (Test-Path -LiteralPath $r)) { continue }
+        if (Test-Path (Join-Path $r "$GAME.exe")) { $gameDir = $r; break }
+        foreach ($sub in (Get-ChildItem -LiteralPath $r -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+            if (Test-Path (Join-Path $sub.FullName "$GAME.exe")) { $gameDir = $sub.FullName; break }
+            if ($sub.Name -match '(?i)房车|rebirth|hoarder') {
+                foreach ($s2 in (Get-ChildItem -LiteralPath $sub.FullName -Directory -ErrorAction SilentlyContinue)) {
+                    if (Test-Path (Join-Path $s2.FullName "$GAME.exe")) { $gameDir = $s2.FullName; break }
+                }
+            }
+            if ($gameDir) { break }
         }
         if ($gameDir) { break }
     }
@@ -109,10 +174,12 @@ if (-not $gameDir) {
     if (Test-Path $asar) {
         $f = Get-Item $asar
         Say ("app.asar  : " + $f.Length + ' 字节，修改时间 ' + $f.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))
-        if ($f.Length -ne 1463506265) {
-            Say '  !!! 与修改器制作基准（1463506265 字节）不一致：游戏版本不同，存档结构可能已变' 'Yellow'
-            Say '     → 若改完游戏里没反应，多半是版本差异；请把上面这一行发给作者' 'Yellow'
-        } else { Say '  版本与基准一致' 'Green' }
+        Say '             （此数字仅供参考。是否适配以下面第 6 项的「实测校验」为准，不再用字节数判断）'
+    } elseif (Test-Path (Join-Path $gameDir 'resources\app.asar.bak')) {
+        $bak = Get-Item (Join-Path $gameDir 'resources\app.asar.bak')
+        Say ('app.asar  : 不存在（原版已备份为 app.asar.bak，' + $bak.Length + ' 字节 —— 说明 MOD 曾安装，属正常）') 'Green'
+    } else {
+        Say 'app.asar  : 未找到（游戏可能不完整，或用了别的分发形式）' 'Yellow'
     }
     if (Test-Path (Join-Path $gameDir 'resources\rhmod_installed.json')) {
         Say 'MOD 状态  : 已安装' 'Green'
@@ -249,13 +316,70 @@ if ($corruptDirs.Count -eq 0) {
             Say ('   · ' + $f.Name + '  ' + $f.Length + 'B  ' + $f.LastWriteTime.ToString('MM-dd HH:mm:ss'))
         }
         if ($recent.Count -gt 0) {
-            Say '  !!! 铁证：最近有存档被游戏判为损坏并隔离！' 'Red'
-            Say '     含义：修改器写进去的档，游戏校验（校验和/结构）没通过 → 游戏丢弃它、回退旧档' 'Red'
-            Say '     → 表现就是「修改器提示写入成功，进游戏数值没变」' 'Red'
-            Say '     根因：对方游戏版本与修改器制作基准不同，校验算法或字段结构对不上' 'Yellow'
-            Say '     请把本报告（特别是「app.asar 字节数」那一行）发给作者，需要对版本重新适配' 'Yellow'
+            Say '  !!! 最近有存档被游戏判为损坏并隔离 —— 这就是「提示写入成功、进游戏数值没变」的直接原因' 'Red'
+            Say '     （游戏校验不通过时会丢弃该档并回退旧档，所以看起来像没生效）' 'Red'
         } else {
-            Say '  · 被隔离的都是 7 天前的旧文件（历史遗留，与本次问题无关）'
+            Say '  · 被隔离的都是 7 天前的旧文件（历史遗留，与本次问题无关）' 'Green'
+        }
+
+        # ---- 实测：用修改器自身的算法复算，判断到底哪一环对不上 ----
+        if (Test-Path (Join-Path $scriptDir '存档修改器.exe')) {
+            Say ''
+            Say '  ---- 实测 A：游戏在用的存档，能否被修改器算法校验通过 ----'
+            $liveFiles = @(Get-ChildItem -Path $defaultDir -File -Filter 'progress-*.json' -ErrorAction SilentlyContinue |
+                           Sort-Object LastWriteTime -Descending | Select-Object -First 2)
+            if ($liveFiles.Count -eq 0) { Say '     （未找到游戏在用的存档）' 'Yellow' }
+            $liveBad = 0
+            foreach ($f in $liveFiles) {
+                $r = Check-Save $f.FullName
+                if (-not $r -or -not $r.Result) { Say ('     · ' + $f.Name + '  (未能校验)') 'Yellow'; continue }
+                Say ('     · ' + $f.Name + '   slot=' + $r.Slot + '  revision=' + $r.Revision + '  ' + $r.Result)
+                if ($r.Result -eq 'CHECKSUM MISMATCH') { $liveBad++ }
+            }
+            if ($liveBad -gt 0) {
+                Say '     !!! 连游戏自己写的档都算不出正确的校验和 → 修改器的校验算法与当前游戏版本不一致' 'Red'
+                Say '         这是根因：只要算法对不上，修改器写出去的档必然被游戏判损坏。' 'Red'
+            } else {
+                Say '     结论：修改器的校验算法与「游戏自己写的档」完全一致（算法没问题）' 'Green'
+            }
+
+            Say ''
+            Say '  ---- 实测 B：被隔离的那几个档，到底哪里不合法 ----'
+            $checked = 0
+            $dropTotal = 0
+            $mismatchTotal = 0
+            foreach ($f in ($all | Select-Object -First 3)) {
+                $r = Check-Save $f.FullName
+                if (-not $r -or -not $r.Result) { Say ('     · ' + $f.Name + '  (未能校验)') 'Yellow'; continue }
+                $checked++
+                Say ('     · ' + $f.Name + '   slot=' + $r.Slot + '  revision=' + $r.Revision + '  ' + $r.Result)
+                if ($r.Result -eq 'CHECKSUM MISMATCH') {
+                    $mismatchTotal++
+                    Say '         → 该文件的校验和与自身内容对不上：它被写过，但校验和没同步更新（或被截断）' 'Yellow'
+                }
+                if ($r.Dropped.Count -gt 0) {
+                    $dropTotal++
+                    Say ('         → 用修改器重写此档会丢弃 ' + $r.Dropped.Count + ' 个字段（白名单没覆盖这种结构）：') 'Red'
+                    foreach ($d in ($r.Dropped | Select-Object -First 8)) { Say ('            ' + $d) 'Red' }
+                }
+            }
+            Say ''
+            Say '  ---- 结论 ----'
+            if ($checked -eq 0) {
+                Say '     未能完成实测（修改器 exe 缺失或无法运行）' 'Yellow'
+            } elseif ($dropTotal -gt 0) {
+                Say '     根因：存档结构与修改器的字段白名单不一致 —— 写档时丢字段导致游戏判损坏。' 'Red'
+                Say '     请把本报告发给作者，需要扩充白名单后重新适配。' 'Yellow'
+            } elseif ($mismatchTotal -gt 0) {
+                Say '     这些被隔离的档，校验和与内容不符：属于「写入过程被中断/被杀软拦截/被云同步覆盖」这一类。' 'Yellow'
+                Say '     建议按顺序排查：① 完全退出游戏再改；② 关闭 Steam 云同步；' 'Yellow'
+                Say '     ③ 把修改器目录加入杀软白名单；④ 确认写入后不要立即用游戏覆盖。' 'Yellow'
+            } else {
+                Say '     这几个隔离档的校验和都能对上 —— 隔离原因不在修改器的校验和逻辑。' 'Yellow'
+                Say '     更可能是游戏自身的存档对写（并发）或云同步冲突导致。' 'Yellow'
+            }
+        } else {
+            Say '  · 同目录未找到「存档修改器.exe」，跳过实测（把它与本脚本放同一文件夹可获得精确结论）' 'Yellow'
         }
     }
 }
